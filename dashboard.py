@@ -1,3 +1,8 @@
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+
 # =========================================
 # 🏭 WIRE BOND INDUSTRY 4.0 DIGITAL TWIN
 # =========================================
@@ -10,6 +15,7 @@ import json
 import os
 import sys
 import plotly.graph_objects as go
+
 
 # =========================
 # PAGE CONFIG
@@ -78,8 +84,8 @@ div[data-testid="metric-container"] {
 # =========================
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from src.paths import DATA_PATH, MODEL_PATH
-from src.decision_engine import maintenance_decision
+from paths import DATA_PATH, MODEL_PATH
+from decision_engine import maintenance_decision
 
 # =========================
 # LOAD MODEL
