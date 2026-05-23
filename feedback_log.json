@@ -1,0 +1,53 @@
+[
+  {
+    "input": {
+      "Type": 1,
+      "Bond_Head_Temperature": 321,
+      "Heater_Block_Temperature": 355,
+      "Bonding_Speed": 2174,
+      "Bonding_Force": 79,
+      "Capillary_Wear": 10,
+      "Temperature_Difference": 34,
+      "Force_Speed_Ratio": 0.03633854645814168,
+      "Stress_Index": 171746,
+      "Wear_Interaction": 340
+    },
+    "prediction": 0,
+    "probability": 0.425,
+    "feedback": 1
+  },
+  {
+    "input": {
+      "Type": 1,
+      "Bond_Head_Temperature": 309.8396785236412,
+      "Heater_Block_Temperature": 309.22960225972537,
+      "Bonding_Speed": 1498.4039527270136,
+      "Bonding_Force": 97.66849333699324,
+      "Capillary_Wear": 13.645238897887623,
+      "Temperature_Difference": -0.6100762639158575,
+      "Force_Speed_Ratio": 0.06518168425760083,
+      "Stress_Index": 146346.85647304266,
+      "Wear_Interaction": -8.324636367062613
+    },
+    "prediction": 1,
+    "probability": 0.63,
+    "feedback": 1
+  },
+  {
+    "input": {
+      "Type": 1,
+      "Bond_Head_Temperature": 297,
+      "Heater_Block_Temperature": 345,
+      "Bonding_Speed": 2743,
+      "Bonding_Force": 85,
+      "Capillary_Wear": 266,
+      "Temperature_Difference": 48,
+      "Force_Speed_Ratio": 0.030987969376594968,
+      "Stress_Index": 233155,
+      "Wear_Interaction": 12768
+    },
+    "prediction": 0,
+    "probability": 0.275,
+    "feedback": 0
+  }
+]

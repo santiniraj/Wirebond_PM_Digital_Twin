@@ -1,0 +1,2 @@
+Type,Bond_Head_Temperature,Heater_Block_Temperature,Bonding_Speed,Bonding_Force,Capillary_Wear,Temperature_Difference,Force_Speed_Ratio,Stress_Index,Wear_Interaction,prediction,probability,feedback,timestamp
+0,301,311,1535,20,46,10,0.013029315960912053,30700,460,0,0.38,1,2026-05-23 22:21:14.556615
