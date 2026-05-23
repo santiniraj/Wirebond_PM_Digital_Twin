@@ -1,8 +1,3 @@
-import sys
-import os
-
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-
 # =========================================
 # 🏭 WIRE BOND INDUSTRY 4.0 DIGITAL TWIN
 # =========================================
@@ -13,65 +8,65 @@ import numpy as np
 import joblib
 import json
 import os
-import sys
 import plotly.graph_objects as go
-
 
 # =========================
 # PAGE CONFIG
 # =========================
 st.set_page_config(
-    page_title="Wire Bond Smart Factory",
+    page_title="Wire Bond Digital Twin",
     layout="wide"
 )
 
 # =========================
-# THEME (SCADA STYLE CLEAN UI)
+# BASE PATH (STREAMLIT SAFE)
+# =========================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+MODEL_PATH = os.path.join(BASE_DIR, "model.pkl")
+FEATURE_PATH = os.path.join(BASE_DIR, "features.json")
+DATA_PATH = os.path.join(BASE_DIR, "cleaned_wirebond_data.csv")
+
+# =========================
+# UI STYLE
 # =========================
 st.markdown("""
 <style>
-
 .stApp {
     background: linear-gradient(135deg, #f4f7fb 0%, #ffffff 100%);
     font-family: Arial;
 }
 
-/* BIG TITLE */
 h1 {
-    font-size: 40px !important;
+    font-size: 42px !important;
     font-weight: 800;
     color: #1f3b57;
 }
 
-/* SUB TITLE */
 h2 {
-    font-size: 30px !important;
+    font-size: 28px !important;
 }
 
-/* METRICS */
 div[data-testid="metric-container"] {
-    font-size: 20px !important;
-    padding: 16px !important;
+    font-size: 18px !important;
+    padding: 14px !important;
 }
 
-/* PANEL */
 .panel {
     background: rgba(255,255,255,0.9);
-    padding: 18px;
-    border-radius: 16px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    padding: 16px;
+    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
 }
 
-/* TRAFFIC LIGHT */
 .light-box {
-    padding: 20px;
-    border-radius: 16px;
+    padding: 18px;
+    border-radius: 14px;
     text-align: center;
-    font-size: 26px;
+    font-size: 22px;
     font-weight: 800;
 }
 
-/* COLORS */
 .green {background:#d4f8e8; color:#1e7e34;}
 .orange {background:#fff3cd; color:#b26a00;}
 .red {background:#f8d7da; color:#a10000;}
@@ -80,15 +75,7 @@ div[data-testid="metric-container"] {
 """, unsafe_allow_html=True)
 
 # =========================
-# PATHS
-# =========================
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from paths import DATA_PATH, MODEL_PATH
-from decision_engine import maintenance_decision
-
-# =========================
-# LOAD MODEL
+# LOAD MODEL + FEATURES
 # =========================
 @st.cache_resource
 def load_model():
@@ -96,7 +83,7 @@ def load_model():
 
 @st.cache_resource
 def load_features():
-    with open("models/trained/features.json") as f:
+    with open(FEATURE_PATH, "r") as f:
         return json.load(f)
 
 model = load_model()
@@ -107,48 +94,49 @@ df = pd.read_csv(DATA_PATH)
 # =========================
 # TITLE
 # =========================
-st.title("🏭 Wire Bond Smart Factory – Industry 4.0 Digital Twin")
-st.markdown("Real-Time Predictive Maintenance | SCADA Monitoring | AI Decision System")
+st.title("🏭 Wire Bond Digital Twin – Industry 4.0 SCADA System")
+st.markdown("Predictive Maintenance | AI Risk Monitoring | Smart Factory Dashboard")
 
 # =========================
-# REFRESH BUTTON (MANUAL ONLY)
+# REFRESH BUTTON
 # =========================
 if st.button("🔄 Refresh Dashboard"):
     st.rerun()
 
 # =========================
-# MACHINE SELECTION
+# MACHINE ID (REAL INDUSTRY STYLE)
 # =========================
-machines = ["WBO001", "WBO002", "WBO003", "WBO004", "WBO005"]
-machine = st.selectbox("Select Machine ID", machines)
+machine_id = st.selectbox(
+    "Select Machine ID",
+    ["WBO001", "WBO002", "WBO003", "WBO004", "WBO005"]
+)
 
 # =========================
-# INPUT SENSOR DATA
+# SIDEBAR SENSORS
 # =========================
-st.sidebar.header("📡 Machine Sensors")
+st.sidebar.header("📡 Sensor Inputs")
 
-Bond_Head = st.sidebar.slider("Bond Head Temperature", 290, 330, 310)
-Heater = st.sidebar.slider("Heater Temperature", 300, 360, 320)
-Speed = st.sidebar.slider("Bond Speed", 1000, 3000, 1500)
-Force = st.sidebar.slider("Bond Force", 10, 100, 50)
-Wear = st.sidebar.slider("Capillary Wear", 0, 300, 100)
+bond_head = st.sidebar.slider("Bond Head Temp", 290, 330, 310)
+heater = st.sidebar.slider("Heater Temp", 300, 360, 320)
+speed = st.sidebar.slider("Bond Speed", 1000, 3000, 1500)
+force = st.sidebar.slider("Bond Force", 10, 100, 50)
+wear = st.sidebar.slider("Capillary Wear", 0, 300, 100)
 
 # =========================
 # FEATURE ENGINEERING
 # =========================
 input_df = pd.DataFrame([{
-    "Type": 1,
-    "Bond_Head_Temperature": Bond_Head,
-    "Heater_Block_Temperature": Heater,
-    "Bonding_Speed": Speed,
-    "Bonding_Force": Force,
-    "Capillary_Wear": Wear
+    "Bond_Head_Temperature": bond_head,
+    "Heater_Block_Temperature": heater,
+    "Bonding_Speed": speed,
+    "Bonding_Force": force,
+    "Capillary_Wear": wear
 }])
 
-input_df["Temperature_Difference"] = Heater - Bond_Head
-input_df["Force_Speed_Ratio"] = Force / Speed if Speed != 0 else 0
-input_df["Stress_Index"] = Force * Speed
-input_df["Wear_Interaction"] = Wear * (Heater - Bond_Head)
+input_df["Temperature_Difference"] = heater - bond_head
+input_df["Force_Speed_Ratio"] = force / speed if speed != 0 else 0
+input_df["Stress_Index"] = force * speed
+input_df["Wear_Interaction"] = wear * (heater - bond_head)
 
 X = input_df.reindex(columns=features, fill_value=0)
 
@@ -157,54 +145,51 @@ X = input_df.reindex(columns=features, fill_value=0)
 # =========================
 prob = model.predict_proba(X)[0][1]
 
-risk, action = maintenance_decision(prob)
-
 # =========================
-# TRAFFIC LIGHT SYSTEM
+# RISK LOGIC
 # =========================
 if prob < 0.3:
     status = "SAFE"
     color = "green"
-    label = "🟢 SYSTEM HEALTHY"
+    label = "🟢 HEALTHY"
 elif prob < 0.7:
     status = "WARNING"
     color = "orange"
-    label = "🟡 WARNING - MONITOR REQUIRED"
+    label = "🟡 WARNING"
 else:
     status = "CRITICAL"
     color = "red"
-    label = "🔴 CRITICAL - IMMEDIATE ACTION"
+    label = "🔴 CRITICAL"
 
 # =========================
 # HEADER KPI
 # =========================
 c1, c2, c3 = st.columns(3)
 
-c1.metric("Machine ID", machine)
+c1.metric("Machine ID", machine_id)
 c2.metric("Failure Risk", f"{prob:.2%}")
 c3.metric("System Status", status)
 
 # =========================
-# 🚦 TRAFFIC LIGHT DISPLAY
+# TRAFFIC LIGHT DISPLAY
 # =========================
-st.markdown("## 🚦 Risk Indicator (SCADA View)")
+st.markdown("## 🚦 Risk Status")
 
 st.markdown(f"""
 <div class="light-box {color}">
-{label}<br><br>
+{label}<br>
 Risk Score: {prob:.2%}
 </div>
 """, unsafe_allow_html=True)
 
 # =========================
-# 📊 RISK GAUGE
+# GAUGE VISUALIZATION
 # =========================
 st.subheader("📊 Risk Gauge")
 
 fig = go.Figure(go.Indicator(
     mode="gauge+number",
     value=prob * 100,
-    title={"text": "Failure Probability (%)"},
     gauge={
         "axis": {"range": [0, 100]},
         "steps": [
@@ -219,19 +204,19 @@ fig = go.Figure(go.Indicator(
 st.plotly_chart(fig, use_container_width=True)
 
 # =========================
-# 🧠 EXPLANATION (SIMPLE)
+# AI EXPLANATION
 # =========================
-st.subheader("🧠 AI Explanation")
+st.subheader("🧠 AI Insight")
 
 if prob < 0.3:
-    st.success("System operating normally with stable parameters.")
+    st.success("Machine operating normally. No action required.")
 elif prob < 0.7:
-    st.warning("Increasing stress detected in thermal or force systems.")
+    st.warning("Degradation detected in thermal or force system.")
 else:
-    st.error("Critical imbalance detected. Immediate maintenance required.")
+    st.error("High failure risk. Immediate maintenance required.")
 
 # =========================
-# 📅 PREDICTIVE MAINTENANCE SCHEDULER
+# MAINTENANCE SCHEDULER
 # =========================
 st.subheader("📅 Maintenance Scheduler")
 
@@ -245,16 +230,14 @@ else:
     days = 1
     priority = "HIGH"
 
-schedule_df = pd.DataFrame({
-    "Machine": [machine],
+st.dataframe(pd.DataFrame({
+    "Machine": [machine_id],
     "Recommended Maintenance (Days)": [days],
     "Priority": [priority]
-})
-
-st.dataframe(schedule_df)
+}))
 
 # =========================
-# 📦 DATA VIEW
+# DATA VIEW
 # =========================
 st.subheader("📦 Factory Dataset")
 st.dataframe(df.head())

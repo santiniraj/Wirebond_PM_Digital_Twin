@@ -1,7 +1,8 @@
 import os
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-DATA_PATH = os.path.join(BASE_DIR, "data/processed/cleaned_wirebond_data.csv")
-MODEL_PATH = os.path.join(BASE_DIR, "models/trained/model.pkl")
-FEATURE_PATH = os.path.join(BASE_DIR, "models/trained/features.json")
+MODEL_PATH = os.path.join(BASE_DIR, "..", "model.pkl")
+ENSEMBLE_MODEL_PATH = os.path.join(BASE_DIR, "..", "ensemble_model.pkl")
+DATA_PATH = os.path.join(BASE_DIR, "..", "cleaned_wirebond_data.csv")
+FEATURE_PATH = os.path.join(BASE_DIR, "..", "features.json")
