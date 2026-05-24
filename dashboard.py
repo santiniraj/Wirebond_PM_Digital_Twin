@@ -57,6 +57,13 @@ import pandas as pd
 
 from paths import MODEL_PATH, FEATURE_PATH, CLEANED_DATA_PATH
 
+model = joblib.load(MODEL_PATH)
+
+df = pd.read_csv(CLEANED_DATA_PATH)
+
+with open(FEATURE_PATH) as f:
+    features = json.load(f)
+
 # =========================
 # DEBUG PATHS (OPTIONAL)
 # =========================
@@ -104,6 +111,22 @@ page = st.sidebar.radio(
     "Select Module",
     ["📊 KPI Dashboard", "🧪 Simulation Engine", "📡 Power BI Feed"]
 )
+# =========================
+# MACHINE COLUMN FIX
+# =========================
+
+MACHINE_MAP = {0: "WBO001", 1: "WBO002", 2: "WBO003"}
+
+if "Machine" in df.columns:
+    df["Machine"] = df["Machine"].fillna("WBO001")
+
+elif "Type" in df.columns:
+    df["Machine"] = df["Type"].map(MACHINE_MAP)
+
+else:
+    df["Machine"] = "WBO001"
+
+df = df[df["Machine"].isin(["WBO001", "WBO002", "WBO003"])]
 
 machine_df = df[df["Machine"] == machine_id].copy()
 
