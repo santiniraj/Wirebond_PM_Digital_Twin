@@ -1,58 +1,52 @@
-import os
+ifrom pathlib import Path
 
 # =========================
-# BASE DIRECTORY
+# BASE DIRECTORY (CLOUD SAFE)
 # =========================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-
-def get_path(*paths):
-    """Helper to build OS-safe paths"""
-    return os.path.join(BASE_DIR, *paths)
-
+BASE_DIR = Path(__file__).resolve().parent
 
 # =========================
 # MODELS
 # =========================
-MODEL_PATH = get_path("..", "models", "trained", "model.pkl")
-ENSEMBLE_MODEL_PATH = get_path("..", "models", "trained", "ensemble_model.pkl")
+MODEL_PATH = BASE_DIR / "model.pkl"
+ENSEMBLE_MODEL_PATH = BASE_DIR / "ensemble_model.pkl"
 
 # =========================
-# DATA (SINGLE SOURCE OF TRUTH)
+# DATA
 # =========================
-RAW_DATA_PATH = get_path("..", "data", "raw")
-PROCESSED_DATA_PATH = get_path("..", "data", "processed")
-CLEANED_DATA_PATH = get_path("..", "data", "processed", "cleaned_wirebond_data.csv")
-
-# =========================
-# POWER BI OUTPUT
-# =========================
-POWERBI_PATH = get_path("..", "powerbi_master.csv")
+CLEANED_DATA_PATH = BASE_DIR / "cleaned_wirebond_data.csv"
 
 # =========================
 # FEATURES
 # =========================
-FEATURE_PATH = get_path("..", "models", "trained", "features.json")
+FEATURE_PATH = BASE_DIR / "features.json"
+
+# =========================
+# POWER BI OUTPUT
+# =========================
+POWERBI_PATH = BASE_DIR / "powerbi_master.csv"
 
 # =========================
 # LOGS
 # =========================
-LOG_DIR = get_path("..", "data", "logs")
-FEEDBACK_LOG_PATH = get_path("..", "data", "logs", "feedback_log.csv")
-PREDICTION_LOG_PATH = get_path("..", "data", "logs", "prediction_history.csv")
+LOG_DIR = BASE_DIR / "logs"
+FEEDBACK_LOG_PATH = LOG_DIR / "feedback_log.csv"
+PREDICTION_LOG_PATH = LOG_DIR / "prediction_history.csv"
 
 
 # =========================
-# SAFETY CHECK (optional but recommended)
+# VALIDATION (SAFE VERSION)
 # =========================
 def validate_paths():
-    required_paths = [
+    required = [
         MODEL_PATH,
         CLEANED_DATA_PATH,
         FEATURE_PATH
     ]
 
-    missing = [p for p in required_paths if not os.path.exists(p)]
+    missing = [str(p) for p in required if not p.exists()]
 
     if missing:
-        raise FileNotFoundError(f"Missing required files: {missing}")
+        raise FileNotFoundError(
+            f"Missing required files: {missing}"
+        )
