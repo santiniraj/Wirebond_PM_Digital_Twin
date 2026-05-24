@@ -378,11 +378,10 @@ if page == "📡 Power BI Feed":
     ) * 100
 
     power_df["Timestamp"] = pd.date_range(
-        start=datetime.now() - timedelta(hours=len(power_df)),
+        end=datetime.now(),
         periods=len(power_df),
-        freq="H"
+        freq="h"
     )
-
     # ================= KPI =================
     st.subheader("📊 Fleet KPI Overview")
 
