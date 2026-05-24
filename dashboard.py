@@ -1,6 +1,6 @@
 # =========================================
 # 🏭 WIRE BOND SCADA DIGITAL TWIN
-# FULL DEPLOY SAFE + LIGHT UI + PM INTEGRATED
+# FULL DEPLOY SAFE + FIXED MULTI-MACHINE
 # =========================================
 
 import streamlit as st
@@ -15,7 +15,7 @@ from datetime import datetime
 from paths import MODEL_PATH, FEATURE_PATH, DATA_PATH, POWERBI_PATH
 
 # =========================================
-# CONFIG (LIGHT SCADA UI)
+# CONFIG
 # =========================================
 st.set_page_config(page_title="Wire Bond SCADA Digital Twin", layout="wide")
 
@@ -33,20 +33,13 @@ st.markdown("""
   50% {opacity: 0.5;}
   100% {opacity: 1;}
 }
-
-.block {
-    background-color: #f7f9fc;
-    padding: 10px;
-    border-radius: 10px;
-    border: 1px solid #d6e4ff;
-}
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="digital-twin">🧠 Digital Twin Engine ACTIVE</div>', unsafe_allow_html=True)
 
 # =========================================
-# SAFE LOAD
+# LOAD DATA
 # =========================================
 if not MODEL_PATH.exists() or not DATA_PATH.exists() or not FEATURE_PATH.exists():
     st.error("Missing required files")
@@ -59,12 +52,14 @@ with open(FEATURE_PATH) as f:
     features = json.load(f)
 
 # =========================================
-# MACHINE FIX
+# MACHINE FIX (MULTI MACHINE ENABLED)
 # =========================================
 if "Machine" not in df.columns:
     df["Machine"] = "WBO001"
 
 df = df[df["Machine"].isin(["WBO001", "WBO002", "WBO003"])]
+
+df_all = df.copy()   # ✅ GLOBAL DATASET (IMPORTANT FIX)
 
 # =========================================
 # SIDEBAR
@@ -78,18 +73,17 @@ page = st.sidebar.radio(
     ["📊 KPI Dashboard", "🧪 Simulation Engine", "📡 Power BI Feed"]
 )
 
-# Refresh system
 if st.sidebar.button("🔄 Refresh System"):
     st.rerun()
 
 machine_df = df[df["Machine"] == machine_id]
 
 # =========================================
-# KPI DASHBOARD + PM SCHEDULER (INTEGRATED)
+# KPI DASHBOARD
 # =========================================
 if page == "📊 KPI Dashboard":
 
-    st.title("📊 KPI Dashboard")
+    st.title("📊 KPI Dashboard (Multi-Machine SCADA View)")
 
     avg_wear = machine_df["Capillary_Wear"].mean()
     avg_speed = machine_df["Bonding_Speed"].mean()
@@ -99,48 +93,34 @@ if page == "📊 KPI Dashboard":
     availability = max(0, 1 - avg_wear / 300)
     performance = min(1, avg_speed / 3000)
     quality = max(0, 1 - failure_rate / 100)
-
     oee = availability * performance * quality * 100
-    risk = min(avg_wear / 300, 1)
 
-    # =========================================
-    # PM SCHEDULER (INTEGRATED RULE-BASED)
-    # =========================================
-    if avg_wear < 100:
-        pm_status = "🟢 Normal - Next PM: 14 days"
-    elif avg_wear < 200:
-        pm_status = "🟠 Warning - Next PM: 7 days"
-    else:
-        pm_status = "🔴 Critical - Immediate PM Required"
+    def color(v):
+        return "🟢" if v > 0.7 else "🟠" if v > 0.3 else "🔴"
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Availability", f"{availability:.2f}")
-    col2.metric("Performance", f"{performance:.2f}")
-    col3.metric("Quality", f"{quality:.2f}")
+    col1.metric("Availability", f"{color(availability)} {availability:.2f}")
+    col2.metric("Performance", f"{color(performance)} {performance:.2f}")
+    col3.metric("Quality", f"{color(quality)} {quality:.2f}")
     col4.metric("OEE", f"{oee:.2f}%")
 
-    st.markdown(f"### Maintenance Status: {pm_status}")
+    # PM Scheduler (INTEGRATED)
+    if avg_wear < 100:
+        pm = "🟢 PM in 14 days"
+    elif avg_wear < 200:
+        pm = "🟠 PM in 7 days"
+    else:
+        pm = "🔴 IMMEDIATE PM REQUIRED"
+
+    st.subheader("Maintenance Status")
+    st.info(pm)
 
     st.metric("Temperature", f"{avg_temp:.2f}")
     st.metric("Wear", f"{avg_wear:.2f}")
     st.metric("Failure %", f"{failure_rate:.2f}%")
 
-    st.plotly_chart(go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=risk * 100,
-        gauge={
-            "axis": {"range": [0, 100]},
-            "bar": {"color": "blue"},
-            "steps": [
-                {"range": [0, 30], "color": "#d4f4dd"},
-                {"range": [30, 70], "color": "#ffeaa7"},
-                {"range": [70, 100], "color": "#ff7675"},
-            ]
-        }
-    )))
-
 # =========================================
-# 🧪 SIMULATION ENGINE (STATIC PRESCRIPTIVE + RCA)
+# 🧪 SIMULATION ENGINE
 # =========================================
 if page == "🧪 Simulation Engine":
 
@@ -163,9 +143,7 @@ if page == "🧪 Simulation Engine":
     X = sim_df.reindex(columns=features, fill_value=0)
     prob = model.predict_proba(X)[0][1]
 
-    # =========================================
-    # ROOT CAUSE ANALYSIS (RULE BASED)
-    # =========================================
+    # Root Cause
     if wear > 200:
         root_cause = "Capillary Wear Degradation"
     elif bond_temp > 320:
@@ -175,9 +153,7 @@ if page == "🧪 Simulation Engine":
     else:
         root_cause = "Normal Variation"
 
-    # =========================================
-    # PRESCRIPTIVE ACTION (STATIC)
-    # =========================================
+    # Prescriptive
     if prob > 0.7:
         action = "Replace capillary + shutdown inspection"
         status = "🔴 HIGH RISK"
@@ -195,7 +171,6 @@ if page == "🧪 Simulation Engine":
         value=prob * 100,
         gauge={
             "axis": {"range": [0, 100]},
-            "bar": {"color": "blue"},
             "steps": [
                 {"range": [0, 30], "color": "#d4f4dd"},
                 {"range": [30, 70], "color": "#ffeaa7"},
@@ -211,48 +186,59 @@ if page == "🧪 Simulation Engine":
     st.warning(action)
 
 # =========================================
-# 📡 POWER BI FEED (ENHANCED MULTI CHART)
+# 📡 POWER BI FEED (FIXED MULTI-MACHINE)
 # =========================================
 if page == "📡 Power BI Feed":
 
-    st.title("📡 Power BI Feed (SCADA Export Layer)")
+    st.title("📡 Power BI Feed (Multi-Machine Analytics)")
 
-    if st.button("🔄 Refresh Power BI"):
+    if st.button("🔄 Refresh"):
         st.rerun()
 
-    power_df = df.copy()
+    df_all["Risk"] = df_all["Capillary_Wear"] / 300
 
-    power_df["Risk"] = power_df["Capillary_Wear"] / 300
-
-    power_df["OEE"] = (
-        (1 - power_df["Capillary_Wear"] / 300) *
-        (power_df["Bonding_Speed"] / 3000) *
-        (1 - power_df["Wirebond_Failure"])
+    df_all["OEE"] = (
+        (1 - df_all["Capillary_Wear"] / 300) *
+        (df_all["Bonding_Speed"] / 3000) *
+        (1 - df_all["Wirebond_Failure"])
     ) * 100
 
-    power_df["Timestamp"] = pd.date_range(
+    df_all["Timestamp"] = pd.date_range(
         end=pd.Timestamp.now(),
-        periods=len(power_df),
+        periods=len(df_all),
         freq="h"
     )
 
-    st.metric("Avg OEE", f"{power_df['OEE'].mean():.2f}%")
+    st.subheader("📈 Time Series Comparison")
+    st.plotly_chart(px.line(df_all, x="Timestamp", y="OEE", color="Machine"))
 
-    # =========================================
-    # ENHANCED POWER BI VISUALS
-    # =========================================
+    st.plotly_chart(px.line(df_all, x="Timestamp", y="Capillary_Wear", color="Machine"))
 
-    st.plotly_chart(px.line(power_df, x="Timestamp", y="Bond_Head_Temperature", color="Machine"))
-    st.plotly_chart(px.line(power_df, x="Timestamp", y="Capillary_Wear", color="Machine"))
-    st.plotly_chart(px.line(power_df, x="Timestamp", y="OEE", color="Machine"))
+    st.subheader("📊 Wear Distribution")
+    st.plotly_chart(px.histogram(df_all, x="Capillary_Wear", color="Machine"))
 
-    st.plotly_chart(px.bar(power_df, x="Machine", y="OEE"))
+    st.subheader("🔥 KPI Heatmap")
+    heat = df_all.groupby("Machine")[["Capillary_Wear", "OEE", "Bonding_Speed"]].mean()
+    st.plotly_chart(px.imshow(heat, text_auto=True, aspect="auto"))
 
-    st.plotly_chart(px.scatter(power_df, x="Capillary_Wear", y="OEE", color="Machine"))
+    st.subheader("📊 OEE Components")
+    oee_breakdown = df_all.groupby("Machine").agg({
+        "Capillary_Wear": "mean",
+        "Bonding_Speed": "mean",
+        "Wirebond_Failure": "mean"
+    }).reset_index()
 
-    # Risk distribution
-    st.plotly_chart(px.histogram(power_df, x="Risk", nbins=20))
+    st.plotly_chart(px.bar(
+        oee_breakdown,
+        x="Machine",
+        y=["Capillary_Wear", "Bonding_Speed", "Wirebond_Failure"],
+        barmode="group"
+    ))
 
-    power_df.to_csv(POWERBI_PATH, index=False)
+    st.subheader("🧁 Risk Contribution")
+    risk_sum = df_all.groupby("Machine")["Risk"].mean().reset_index()
+    st.plotly_chart(px.pie(risk_sum, names="Machine", values="Risk"))
 
-    st.success("📁 Power BI Export Updated")
+    df_all.to_csv(POWERBI_PATH, index=False)
+
+    st.success("Export updated for Power BI")
