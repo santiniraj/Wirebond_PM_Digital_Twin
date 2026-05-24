@@ -1,6 +1,6 @@
 # =========================================
 # 🏭 WIRE BOND SCADA DIGITAL TWIN
-# COLOR SAFE + PRESCRIPTIVE AI + PM DATE + FULL FEATURES
+# FULL STABLE VERSION (KPI + SIM + POWER BI + HIL + PM + AI)
 # =========================================
 
 import streamlit as st
@@ -12,11 +12,6 @@ import plotly.graph_objects as go
 import plotly.express as px
 
 from datetime import datetime, timedelta
-from io import BytesIO
-
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
-
 from paths import MODEL_PATH, FEATURE_PATH, DATA_PATH, POWERBI_PATH
 
 # =========================================
@@ -29,8 +24,7 @@ st.markdown("""
 .digital {font-size:22px;font-weight:bold;color:#2b6cb0;}
 .soft-green {color:#2f855a;}
 .soft-orange {color:#b7791f;}
-.soft-blue {color:#3182ce;}
-.soft-gray {color:#4a5568;}
+.soft-red {color:#c53030;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -52,7 +46,7 @@ df = df[df["Machine"].isin(["WBO001","WBO002","WBO003"])]
 df_all = df.copy()
 
 # =========================================
-# HIL LOG (Operator Decisions)
+# HIL LOG
 # =========================================
 HIL_FILE = "hil_log.csv"
 
@@ -62,6 +56,7 @@ except:
     hil_log = pd.DataFrame(columns=["Time","Machine","Risk","System_Action","Operator_Decision"])
 
 def log_hil(machine, risk, system_action, operator):
+    global hil_log
     new = pd.DataFrame([{
         "Time": datetime.now(),
         "Machine": machine,
@@ -69,7 +64,6 @@ def log_hil(machine, risk, system_action, operator):
         "System_Action": system_action,
         "Operator_Decision": operator
     }])
-    global hil_log
     hil_log = pd.concat([hil_log, new], ignore_index=True)
     hil_log.to_csv(HIL_FILE, index=False)
 
@@ -91,36 +85,37 @@ if st.sidebar.button("🔄 Refresh"):
 machine_df = df[df["Machine"] == machine_id]
 
 # =========================================
-# SAFE COLOR ENGINE (NO RED MACHINE COLORS)
+# COLOR ENGINE
 # =========================================
 def soft_risk_color(v):
     if v < 0.3:
-        return "#2f855a"  # soft green
+        return "#2f855a"
     elif v < 0.7:
-        return "#d69e2e"  # soft amber
-    return "#718096"      # soft gray (NOT red)
+        return "#d69e2e"
+    return "#c53030"
+
+def powerbi_light_color(v):
+    if v < 0.3:
+        return "#A8E6A3"
+    elif v < 0.7:
+        return "#FFD08A"
+    return "#F4A6A6"
 
 # =========================================
-# PRESCRIPTIVE + AGENTIC AI ENGINE (RULE BASED)
+# AI ENGINE (RULE BASED)
 # =========================================
 def ai_diagnosis(wear, temp, speed):
     if wear > 200:
-        issue = "Mechanical degradation in bonding head"
-        action = "Schedule immediate maintenance inspection"
+        return "Capillary degradation detected", "Immediate inspection required"
     elif temp > 320:
-        issue = "Thermal instability detected"
-        action = "Reduce heater temperature and inspect thermal control"
+        return "Thermal instability detected", "Reduce heater load"
     elif speed < 1200:
-        issue = "Production inefficiency detected"
-        action = "Adjust bonding speed calibration"
+        return "Low production efficiency", "Adjust bonding speed"
     else:
-        issue = "System operating normally"
-        action = "Continue operation"
-
-    return issue, action
+        return "System stable", "Continue operation"
 
 # =========================================
-# PM DATE CALCULATOR (REAL DATE, NOT TEXT ONLY)
+# PM SCHEDULER
 # =========================================
 def pm_schedule(wear):
     today = datetime.today()
@@ -130,10 +125,10 @@ def pm_schedule(wear):
     elif wear < 200:
         return "Preventive Maintenance", today + timedelta(days=7)
     else:
-        return "Urgent Maintenance Required", today + timedelta(days=1)
+        return "Urgent Maintenance", today + timedelta(days=1)
 
 # =========================================
-# 📊 PERFORMANCE DASHBOARD (HISTORICAL)
+# 📊 KPI DASHBOARD
 # =========================================
 if page == "📊 Performance Dashboard":
 
@@ -152,14 +147,13 @@ if page == "📊 Performance Dashboard":
     risk = wear/300
 
     col1, col2, col3, col4 = st.columns(4)
-
     col1.metric("Availability", f"{availability:.2f}")
     col2.metric("Performance", f"{performance:.2f}")
     col3.metric("Quality", f"{quality:.2f}")
-    col4.metric("Overall Efficiency", f"{oee:.2f}%")
+    col4.metric("OEE %", f"{oee:.2f}")
 
-    # RISK GAUGE (SOFT COLOR)
-    st.subheader("Risk Level Indicator")
+    # RISK GAUGE
+    st.subheader("Risk Indicator")
 
     st.plotly_chart(go.Figure(go.Indicator(
         mode="gauge+number",
@@ -170,22 +164,19 @@ if page == "📊 Performance Dashboard":
             "steps":[
                 {"range":[0,30],"color":"#e6fffa"},
                 {"range":[30,70],"color":"#fefcbf"},
-                {"range":[70,100],"color":"#edf2f7"}
+                {"range":[70,100],"color":"#fde2e2"}
             ]
         }
     )))
 
-    # AI + PRESCRIPTIVE OUTPUT
     issue, action = ai_diagnosis(wear,temp,speed)
-
     pm_type, pm_date = pm_schedule(wear)
 
-    st.subheader("System Analysis Report")
-    st.info(f"Issue Detected: {issue}")
-    st.warning(f"Recommended Action: {action}")
+    st.subheader("System Analysis")
+    st.info(issue)
+    st.warning(action)
 
-    st.success(f"Maintenance Type: {pm_type}")
-    st.write(f"Recommended Maintenance Date: {pm_date.strftime('%Y-%m-%d')}")
+    st.success(f"{pm_type} | Scheduled: {pm_date.strftime('%Y-%m-%d')}")
 
     st.subheader("Operator Decision History")
     st.dataframe(hil_log[hil_log["Machine"] == machine_id])
@@ -195,12 +186,12 @@ if page == "📊 Performance Dashboard":
 # =========================================
 if page == "🧪 Simulation Engine":
 
-    st.title("🧪 Simulation & Intelligent Decision Engine")
+    st.title("🧪 Simulation Engine")
 
-    temp = st.sidebar.slider("Bond Temperature",290,330,310)
-    speed = st.sidebar.slider("Bond Speed",1000,3000,1500)
-    force = st.sidebar.slider("Bond Force",10,100,50)
-    wear = st.sidebar.slider("Capillary Wear",0,300,100)
+    temp = st.sidebar.slider("Temperature",290,330,310)
+    speed = st.sidebar.slider("Speed",1000,3000,1500)
+    force = st.sidebar.slider("Force",10,100,50)
+    wear = st.sidebar.slider("Wear",0,300,100)
 
     sim = pd.DataFrame([{
         "Bond_Head_Temperature": temp,
@@ -217,7 +208,8 @@ if page == "🧪 Simulation Engine":
     issue, action = ai_diagnosis(wear,temp,speed)
     pm_type, pm_date = pm_schedule(wear)
 
-    st.subheader("Risk Gauge (Simulation)")
+    st.subheader("Simulation Risk Gauge")
+
     st.plotly_chart(go.Figure(go.Indicator(
         mode="gauge+number",
         value=risk*100,
@@ -227,28 +219,24 @@ if page == "🧪 Simulation Engine":
         }
     )))
 
-    st.info(f"Detected Issue: {issue}")
-    st.warning(f"Recommended Action: {action}")
+    st.info(issue)
+    st.warning(action)
+    st.success(f"{pm_type} | {pm_date.strftime('%Y-%m-%d')}")
 
-    st.success(f"Maintenance Plan: {pm_type}")
-    st.write(f"Scheduled Date: {pm_date.strftime('%Y-%m-%d')}")
+    system_action = "Approve Maintenance" if risk > 0.5 else "Continue Operation"
 
-    st.subheader("Human Approval Layer")
+    operator = st.radio("Operator Decision",["Approve","Reject","Override"])
 
-    system_decision = "Approve Maintenance" if risk > 0.5 else "Continue Operation"
-
-    operator = st.radio("Operator Decision",["Approve","Reject"])
-
-    if st.button("Confirm Decision"):
-        log_hil(machine_id, risk, system_decision, operator)
-        st.success("Decision Recorded")
+    if st.button("Confirm HIL Decision"):
+        log_hil(machine_id, risk, system_action, operator)
+        st.success("Decision Logged")
 
 # =========================================
-# 📡 ANALYTICS FEED (POWER BI STYLE)
+# 📡 ANALYTICS FEED (POWER BI)
 # =========================================
 if page == "📡 Analytics Feed":
 
-    st.title("📡 Industrial Analytics Feed")
+    st.title("📡 Analytics Feed (Power BI Style)")
 
     df_all["Availability"] = 1 - df_all["Capillary_Wear"]/300
     df_all["Performance"] = df_all["Bonding_Speed"]/3000
@@ -263,29 +251,38 @@ if page == "📡 Analytics Feed":
         freq="h"
     )
 
-    # PRIORITY ENGINE
+    # PRIORITY
     priority = df_all.groupby("Machine")[["Risk","Efficiency"]].mean()
     priority["Priority Score"] = priority["Risk"]*(100-priority["Efficiency"])
     priority = priority.sort_values("Priority Score", ascending=False)
 
-    st.subheader("Maintenance Priority Ranking")
+    st.subheader("Maintenance Priority")
     st.dataframe(priority)
 
-    # VISUALS (SOFT COLORS)
+    # LIGHT COLOR CHARTS ONLY FOR POWER BI
     st.subheader("Efficiency Trend")
     st.plotly_chart(px.line(df_all, x="Timestamp", y="Efficiency", color="Machine"))
 
     st.subheader("Risk Distribution")
     st.plotly_chart(px.histogram(df_all, x="Risk", color="Machine"))
 
-    st.subheader("System Health Overview")
+    st.subheader("Heatmap")
     heat = df_all.groupby("Machine")[["Risk","Efficiency"]].mean()
-    st.plotly_chart(px.imshow(heat, text_auto=True, color_continuous_scale="Blues"))
+    st.plotly_chart(px.imshow(
+        heat,
+        text_auto=True,
+        color_continuous_scale=["#A8E6A3","#FFD08A","#F4A6A6"]
+    ))
 
-    st.subheader("Component Analysis")
-    st.plotly_chart(px.bar(df_all, x="Machine",
+    st.subheader("Component Breakdown")
+    fig = px.bar(
+        df_all,
+        x="Machine",
         y=["Availability","Performance","Quality"],
-        barmode="group"))
+        barmode="group",
+        color_discrete_sequence=["#A8E6A3","#FFD08A","#F4A6A6"]
+    )
+    st.plotly_chart(fig)
 
     df_all.to_csv(POWERBI_PATH, index=False)
-    st.success("Analytics Export Updated")
+    st.success("Export Completed")
