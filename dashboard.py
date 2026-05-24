@@ -251,22 +251,35 @@ if page == "📡 Power BI Feed":
     power_df["Risk"] = power_df["Capillary_Wear"] / 300
 
     power_df["OEE"] = (
-        (1 - power_df["Capillary_Wear"]/300) *
-        (power_df["Bonding_Speed"]/3000) *
+        (1 - power_df["Capillary_Wear"] / 300) *
+        (power_df["Bonding_Speed"] / 3000) *
         (1 - power_df["Wirebond_Failure"])
     ) * 100
+
+    # ✅ FIXED SAFETY CHECK (inside block)
+    if len(power_df) == 0:
+        st.warning("No data available for Power BI feed")
+        st.stop()
 
     power_df["Timestamp"] = pd.date_range(
         end=pd.Timestamp.now(),
         periods=len(power_df),
-        freq="H"
+        freq="h"
     )
 
     st.metric("Avg OEE", f"{power_df['OEE'].mean():.2f}%")
 
-    st.plotly_chart(px.line(power_df, x="Timestamp", y="Bond_Head_Temperature", color="Machine"))
-    st.plotly_chart(px.bar(power_df, x="Machine", y="OEE"))
-    st.plotly_chart(px.scatter(power_df, x="Capillary_Wear", y="OEE"))
+    st.plotly_chart(
+        px.line(power_df, x="Timestamp", y="Bond_Head_Temperature", color="Machine")
+    )
+
+    st.plotly_chart(
+        px.bar(power_df, x="Machine", y="OEE")
+    )
+
+    st.plotly_chart(
+        px.scatter(power_df, x="Capillary_Wear", y="OEE")
+    )
 
     power_df.to_csv(POWERBI_PATH, index=False)
 
