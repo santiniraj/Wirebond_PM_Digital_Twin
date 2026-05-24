@@ -49,11 +49,16 @@ st.markdown(
 # =========================================
 # LOAD DATA + MODEL
 # =========================================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+from pathlib import Path
 
-model = joblib.load(os.path.join(BASE_DIR, "..", "models", "trained", "model.pkl"))
+BASE_DIR = Path(__file__).resolve().parent
 
-with open(os.path.join(BASE_DIR, "..", "models", "trained", "features.json")) as f:
+MODEL_PATH = BASE_DIR / ".." / "models" / "trained" / "model.pkl"
+FEATURE_PATH = BASE_DIR / ".." / "models" / "trained" / "features.json"
+
+model = joblib.load(MODEL_PATH)
+
+with open(FEATURE_PATH, "r") as f:
     features = json.load(f)
 
 df = pd.read_csv(os.path.join(BASE_DIR, "..", "data", "processed", "cleaned_wirebond_data.csv"))
