@@ -5,17 +5,20 @@ from datetime import datetime
 LOG_FILE = "data/logs/prediction_history.csv"
 
 
-def log_prediction(input_data, probability, risk):
-    """
-    Save every prediction for monitoring
-    """
+def log_prediction(input_data, probability, risk, machine_id=None):
 
     os.makedirs("data/logs", exist_ok=True)
 
     row = input_data.copy()
-    row["probability"] = probability
+
+    # enforce SCADA traceability
+    row["machine_id"] = machine_id
+
+    row["probability"] = float(probability)
     row["risk"] = risk
-    row["timestamp"] = datetime.now()
+
+    # stable timestamp format (Power BI friendly)
+    row["timestamp"] = datetime.now().isoformat()
 
     df = pd.DataFrame([row])
 
