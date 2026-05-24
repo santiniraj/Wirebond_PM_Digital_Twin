@@ -1,6 +1,5 @@
 # =========================================
 # 🏭 WIRE BOND SCADA DIGITAL TWIN
-# FULL STABLE VERSION (COLOR FIXED ONLY)
 # =========================================
 
 import streamlit as st
@@ -141,7 +140,7 @@ if page == "📊 Performance Dashboard":
     col3.metric("Quality", f"{quality:.2f}")
     col4.metric("OEE %", f"{oee:.2f}")
 
-    st.subheader("Risk Gauge (Green / Orange / Red)")
+    st.subheader("Risk Gauge")
 
     st.plotly_chart(go.Figure(go.Indicator(
         mode="gauge+number",
@@ -194,7 +193,7 @@ if page == "🧪 Simulation Engine":
     issue, action = ai_diagnosis(wear,temp,speed)
     pm_type, pm_date = pm_schedule(wear)
 
-    st.subheader("Simulation Risk Gauge (Green / Orange / Red)")
+    st.subheader("Simulation Risk Gauge")
 
     st.plotly_chart(go.Figure(go.Indicator(
         mode="gauge+number",
