@@ -70,14 +70,22 @@ model = joblib.load(MODEL_PATH)
 
 with open(FEATURE_PATH, "r") as f:
     features = json.load(f)
-df = pd.read_csv(os.path.join(BASE_DIR, "..", "data", "processed", "cleaned_wirebond_data.csv"))
 
-MACHINE_MAP = {0: "WBO001", 1: "WBO002", 2: "WBO003"}
+from pathlib import Path
+import pandas as pd
+import streamlit as st
 
-if "Machine" not in df.columns:
-    df["Machine"] = df["Type"].map(MACHINE_MAP)
+BASE_DIR = Path(__file__).resolve().parent
 
-df = df[df["Machine"].isin(["WBO001", "WBO002", "WBO003"])]
+DATA_PATH = BASE_DIR / "cleaned_wirebond_data.csv"
+
+st.write("DATA PATH:", DATA_PATH)
+
+if not DATA_PATH.exists():
+    st.error("❌ Dataset not found in Streamlit Cloud")
+    st.stop()
+
+df = pd.read_csv(DATA_PATH)
 
 # =========================================
 # SIDEBAR
