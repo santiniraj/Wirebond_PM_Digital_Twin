@@ -1,6 +1,6 @@
 # =========================================
 # 🏭 WIRE BOND SCADA DIGITAL TWIN
-# FULL CLEAN STREAMLIT VERSION (DEPLOY READY)
+# FULL DEPLOY SAFE VERSION (NO FEATURE REMOVED)
 # =========================================
 
 import streamlit as st
@@ -20,20 +20,20 @@ from paths import MODEL_PATH, FEATURE_PATH, DATA_PATH, POWERBI_PATH
 st.set_page_config(page_title="Wire Bond SCADA Digital Twin", layout="wide")
 
 # =========================================
-# DIGITAL TWIN HEADER
+# HEADER
 # =========================================
 st.markdown("""
 <style>
+.digital-twin {
+    font-size: 22px;
+    font-weight: bold;
+    color: #00ff99;
+    animation: pulse 1.5s infinite;
+}
 @keyframes pulse {
   0% {opacity: 1;}
   50% {opacity: 0.4;}
   100% {opacity: 1;}
-}
-.digital-twin {
-    animation: pulse 1.5s infinite;
-    font-size: 22px;
-    font-weight: bold;
-    color: #00ff99;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -41,34 +41,28 @@ st.markdown("""
 st.markdown('<div class="digital-twin">🧠 Digital Twin Engine ACTIVE</div>', unsafe_allow_html=True)
 
 # =========================================
-# VALIDATION (DEPLOY SAFE)
+# SAFE FILE LOADING
 # =========================================
-st.write("MODEL PATH:", MODEL_PATH)
-
 if not MODEL_PATH.exists():
-    st.error("❌ model.pkl not found")
+    st.error(f"Missing model: {MODEL_PATH}")
     st.stop()
 
 if not DATA_PATH.exists():
-    st.error("❌ cleaned_wirebond_data.csv not found")
+    st.error(f"Missing data: {DATA_PATH}")
     st.stop()
 
 if not FEATURE_PATH.exists():
-    st.error("❌ features.json not found")
+    st.error(f"Missing features: {FEATURE_PATH}")
     st.stop()
 
-# =========================================
-# LOAD MODEL + DATA
-# =========================================
 model = joblib.load(MODEL_PATH)
-
 df = pd.read_csv(DATA_PATH)
 
 with open(FEATURE_PATH) as f:
     features = json.load(f)
 
 # =========================================
-# MACHINE FIX (CRITICAL)
+# MACHINE FIX (IMPORTANT)
 # =========================================
 if "Machine" not in df.columns:
     if "Type" in df.columns:
@@ -82,7 +76,7 @@ df = df[df["Machine"].isin(["WBO001", "WBO002", "WBO003"])]
 # =========================================
 # SIDEBAR
 # =========================================
-st.sidebar.title("🏭 SCADA PANEL")
+st.sidebar.title("SCADA Control")
 
 machine_id = st.sidebar.selectbox("Machine", ["WBO001", "WBO002", "WBO003"])
 
@@ -91,10 +85,10 @@ page = st.sidebar.radio(
     ["📊 KPI Dashboard", "🧪 Simulation Engine", "📡 Power BI Feed"]
 )
 
-machine_df = df[df["Machine"] == machine_id].copy()
+machine_df = df[df["Machine"] == machine_id]
 
 # =========================================
-# KPI DASHBOARD
+# KPI DASHBOARD (UNCHANGED LOGIC)
 # =========================================
 if page == "📊 KPI Dashboard":
 
@@ -126,8 +120,8 @@ if page == "📊 KPI Dashboard":
     c4.metric("Wear", f"{avg_wear:.2f}")
     c5.metric("Failure %", f"{failure_rate:.2f}%")
 
-    st.subheader("🏭 Machine Health")
-    st.success("🟢 GOOD" if hist_risk < 0.3 else "🟠 WARNING" if hist_risk < 0.7 else "🔴 CRITICAL")
+    st.subheader("Machine Health")
+    st.success("GOOD" if hist_risk < 0.3 else "WARNING" if hist_risk < 0.7 else "CRITICAL")
 
     rul = max(1, (300 - avg_wear) / 20)
     st.metric("RUL (Days)", f"{rul:.1f}")
@@ -177,7 +171,7 @@ if page == "🧪 Simulation Engine":
 
     st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader("AI Recommendation")
+    st.subheader("Recommendation")
 
     st.info("High Risk" if prob > 0.7 else "Medium Risk" if prob > 0.3 else "Low Risk")
 
@@ -208,7 +202,6 @@ if page == "📡 Power BI Feed":
 
     st.plotly_chart(px.line(power_df, x="Timestamp", y="Bond_Head_Temperature", color="Machine"))
     st.plotly_chart(px.bar(power_df, x="Machine", y="OEE"))
-
     st.plotly_chart(px.scatter(power_df, x="Capillary_Wear", y="OEE"))
 
     power_df.to_csv(POWERBI_PATH, index=False)
