@@ -1,6 +1,6 @@
 # =========================================
 # 🏭 WIRE BOND SCADA DIGITAL TWIN
-# FULL STABLE VERSION (KPI + SIM + POWER BI + HIL + PM + AI)
+# FULL STABLE VERSION (COLOR FIXED ONLY)
 # =========================================
 
 import streamlit as st
@@ -22,9 +22,6 @@ st.set_page_config(page_title="SCADA Digital Twin", layout="wide")
 st.markdown("""
 <style>
 .digital {font-size:22px;font-weight:bold;color:#2b6cb0;}
-.soft-green {color:#2f855a;}
-.soft-orange {color:#b7791f;}
-.soft-red {color:#c53030;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -71,7 +68,6 @@ def log_hil(machine, risk, system_action, operator):
 # SIDEBAR
 # =========================================
 st.sidebar.title("Control Panel")
-
 machine_id = st.sidebar.selectbox("Machine", ["WBO001","WBO002","WBO003"])
 
 page = st.sidebar.radio(
@@ -85,24 +81,17 @@ if st.sidebar.button("🔄 Refresh"):
 machine_df = df[df["Machine"] == machine_id]
 
 # =========================================
-# COLOR ENGINE
+# COLOR ENGINE (FIXED)
 # =========================================
-def soft_risk_color(v):
+def risk_color(v):
     if v < 0.3:
-        return "#2f855a"
+        return "green"
     elif v < 0.7:
-        return "#d69e2e"
-    return "#c53030"
-
-def powerbi_light_color(v):
-    if v < 0.3:
-        return "#A8E6A3"
-    elif v < 0.7:
-        return "#FFD08A"
-    return "#F4A6A6"
+        return "orange"
+    return "red"
 
 # =========================================
-# AI ENGINE (RULE BASED)
+# AI ENGINE
 # =========================================
 def ai_diagnosis(wear, temp, speed):
     if wear > 200:
@@ -152,19 +141,18 @@ if page == "📊 Performance Dashboard":
     col3.metric("Quality", f"{quality:.2f}")
     col4.metric("OEE %", f"{oee:.2f}")
 
-    # RISK GAUGE
-    st.subheader("Risk Indicator")
+    st.subheader("Risk Gauge (Green / Orange / Red)")
 
     st.plotly_chart(go.Figure(go.Indicator(
         mode="gauge+number",
         value=risk*100,
         gauge={
             "axis":{"range":[0,100]},
-            "bar":{"color":soft_risk_color(risk)},
+            "bar":{"color":risk_color(risk)},
             "steps":[
-                {"range":[0,30],"color":"#e6fffa"},
-                {"range":[30,70],"color":"#fefcbf"},
-                {"range":[70,100],"color":"#fde2e2"}
+                {"range":[0,30],"color":"#c6f6d5"},
+                {"range":[30,70],"color":"#fbd38d"},
+                {"range":[70,100],"color":"#feb2b2"}
             ]
         }
     )))
@@ -172,11 +160,9 @@ if page == "📊 Performance Dashboard":
     issue, action = ai_diagnosis(wear,temp,speed)
     pm_type, pm_date = pm_schedule(wear)
 
-    st.subheader("System Analysis")
     st.info(issue)
     st.warning(action)
-
-    st.success(f"{pm_type} | Scheduled: {pm_date.strftime('%Y-%m-%d')}")
+    st.success(f"{pm_type} | {pm_date.strftime('%Y-%m-%d')}")
 
     st.subheader("Operator Decision History")
     st.dataframe(hil_log[hil_log["Machine"] == machine_id])
@@ -208,14 +194,19 @@ if page == "🧪 Simulation Engine":
     issue, action = ai_diagnosis(wear,temp,speed)
     pm_type, pm_date = pm_schedule(wear)
 
-    st.subheader("Simulation Risk Gauge")
+    st.subheader("Simulation Risk Gauge (Green / Orange / Red)")
 
     st.plotly_chart(go.Figure(go.Indicator(
         mode="gauge+number",
         value=risk*100,
         gauge={
             "axis":{"range":[0,100]},
-            "bar":{"color":soft_risk_color(risk)}
+            "bar":{"color":risk_color(risk)},
+            "steps":[
+                {"range":[0,30],"color":"#c6f6d5"},
+                {"range":[30,70],"color":"#fbd38d"},
+                {"range":[70,100],"color":"#feb2b2"}
+            ]
         }
     )))
 
@@ -231,8 +222,11 @@ if page == "🧪 Simulation Engine":
         log_hil(machine_id, risk, system_action, operator)
         st.success("Decision Logged")
 
+    st.subheader("Operator Decision History")
+    st.dataframe(hil_log[hil_log["Machine"] == machine_id])
+
 # =========================================
-# 📡 ANALYTICS FEED (POWER BI)
+# 📡 ANALYTICS FEED (POWER BI - LIGHT COLORS ONLY)
 # =========================================
 if page == "📡 Analytics Feed":
 
@@ -251,7 +245,6 @@ if page == "📡 Analytics Feed":
         freq="h"
     )
 
-    # PRIORITY
     priority = df_all.groupby("Machine")[["Risk","Efficiency"]].mean()
     priority["Priority Score"] = priority["Risk"]*(100-priority["Efficiency"])
     priority = priority.sort_values("Priority Score", ascending=False)
@@ -259,12 +252,12 @@ if page == "📡 Analytics Feed":
     st.subheader("Maintenance Priority")
     st.dataframe(priority)
 
-    # LIGHT COLOR CHARTS ONLY FOR POWER BI
     st.subheader("Efficiency Trend")
     st.plotly_chart(px.line(df_all, x="Timestamp", y="Efficiency", color="Machine"))
 
     st.subheader("Risk Distribution")
-    st.plotly_chart(px.histogram(df_all, x="Risk", color="Machine"))
+    st.plotly_chart(px.histogram(df_all, x="Risk", color="Machine",
+        color_discrete_sequence=["#A8E6A3","#FFD08A","#F4A6A6"]))
 
     st.subheader("Heatmap")
     heat = df_all.groupby("Machine")[["Risk","Efficiency"]].mean()
@@ -275,14 +268,13 @@ if page == "📡 Analytics Feed":
     ))
 
     st.subheader("Component Breakdown")
-    fig = px.bar(
+    st.plotly_chart(px.bar(
         df_all,
         x="Machine",
         y=["Availability","Performance","Quality"],
         barmode="group",
         color_discrete_sequence=["#A8E6A3","#FFD08A","#F4A6A6"]
-    )
-    st.plotly_chart(fig)
+    ))
 
     df_all.to_csv(POWERBI_PATH, index=False)
     st.success("Export Completed")
