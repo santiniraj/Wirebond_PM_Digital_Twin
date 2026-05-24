@@ -50,17 +50,26 @@ st.markdown(
 # LOAD DATA + MODEL
 # =========================================
 from pathlib import Path
+import joblib
+import json
+import streamlit as st
 
 BASE_DIR = Path(__file__).resolve().parent
 
-MODEL_PATH = BASE_DIR / ".." / "models" / "trained" / "model.pkl"
-FEATURE_PATH = BASE_DIR / ".." / "models" / "trained" / "features.json"
+# ✔ ACTUAL FILE LOCATION (ROOT LEVEL)
+MODEL_PATH = BASE_DIR / "model.pkl"
+FEATURE_PATH = BASE_DIR / "features.json"
+
+st.write("MODEL PATH:", MODEL_PATH)
+
+if not MODEL_PATH.exists():
+    st.error("❌ model.pkl not found in repo root")
+    st.stop()
 
 model = joblib.load(MODEL_PATH)
 
 with open(FEATURE_PATH, "r") as f:
     features = json.load(f)
-
 df = pd.read_csv(os.path.join(BASE_DIR, "..", "data", "processed", "cleaned_wirebond_data.csv"))
 
 MACHINE_MAP = {0: "WBO001", 1: "WBO002", 2: "WBO003"}
