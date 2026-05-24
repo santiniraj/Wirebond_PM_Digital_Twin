@@ -47,46 +47,52 @@ st.markdown(
 )
 
 # =========================================
-# LOAD DATA + MODEL
+# LOAD DATA + MODEL (CLEAN VERSION)
 # =========================================
-from pathlib import Path
+
+import streamlit as st
 import joblib
 import json
-import streamlit as st
+import pandas as pd
 
-BASE_DIR = Path(__file__).resolve().parent
+from paths import MODEL_PATH, FEATURE_PATH, CLEANED_DATA_PATH
 
-# ✔ ACTUAL FILE LOCATION (ROOT LEVEL)
-MODEL_PATH = BASE_DIR / "model.pkl"
-FEATURE_PATH = BASE_DIR / "features.json"
-
+# =========================
+# DEBUG PATHS (OPTIONAL)
+# =========================
 st.write("MODEL PATH:", MODEL_PATH)
+st.write("DATA PATH:", CLEANED_DATA_PATH)
 
+# =========================
+# VALIDATION
+# =========================
 if not MODEL_PATH.exists():
-    st.error("❌ model.pkl not found in repo root")
+    st.error("❌ model.pkl not found")
     st.stop()
 
+if not CLEANED_DATA_PATH.exists():
+    st.error("❌ cleaned_wirebond_data.csv not found")
+    st.stop()
+
+if not FEATURE_PATH.exists():
+    st.error("❌ features.json not found")
+    st.stop()
+
+# =========================
+# LOAD MODEL
+# =========================
 model = joblib.load(MODEL_PATH)
 
+# =========================
+# LOAD DATA
+# =========================
+df = pd.read_csv(CLEANED_DATA_PATH)
+
+# =========================
+# LOAD FEATURES
+# =========================
 with open(FEATURE_PATH, "r") as f:
     features = json.load(f)
-
-from pathlib import Path
-import pandas as pd
-import streamlit as st
-
-BASE_DIR = Path(__file__).resolve().parent
-
-DATA_PATH = BASE_DIR / "cleaned_wirebond_data.csv"
-
-st.write("DATA PATH:", DATA_PATH)
-
-if not DATA_PATH.exists():
-    st.error("❌ Dataset not found in Streamlit Cloud")
-    st.stop()
-
-df = pd.read_csv(DATA_PATH)
-
 # =========================================
 # SIDEBAR
 # =========================================
