@@ -1,6 +1,7 @@
 # =========================================
 # 🏭 WIRE BOND SCADA DIGITAL TWIN
 # FULL DEPLOY SAFE VERSION (NO FEATURE REMOVED)
+# ENHANCED VISUAL + PM + POWER BI FIX
 # =========================================
 
 import streamlit as st
@@ -10,7 +11,7 @@ import joblib
 import json
 import plotly.graph_objects as go
 import plotly.express as px
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from paths import MODEL_PATH, FEATURE_PATH, DATA_PATH, POWERBI_PATH
 
@@ -20,20 +21,28 @@ from paths import MODEL_PATH, FEATURE_PATH, DATA_PATH, POWERBI_PATH
 st.set_page_config(page_title="Wire Bond SCADA Digital Twin", layout="wide")
 
 # =========================================
-# HEADER
+# HEADER STYLE (MORE INDUSTRIAL COLORS)
 # =========================================
 st.markdown("""
 <style>
 .digital-twin {
-    font-size: 22px;
+    font-size: 24px;
     font-weight: bold;
     color: #00ff99;
     animation: pulse 1.5s infinite;
 }
+
 @keyframes pulse {
   0% {opacity: 1;}
-  50% {opacity: 0.4;}
+  50% {opacity: 0.3;}
   100% {opacity: 1;}
+}
+
+.kpi-box {
+    padding: 10px;
+    border-radius: 10px;
+    background-color: #111;
+    border: 1px solid #00ff99;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -62,7 +71,7 @@ with open(FEATURE_PATH) as f:
     features = json.load(f)
 
 # =========================================
-# MACHINE FIX (IMPORTANT)
+# MACHINE FIX
 # =========================================
 if "Machine" not in df.columns:
     if "Type" in df.columns:
@@ -74,21 +83,27 @@ df["Machine"] = df["Machine"].fillna("WBO001")
 df = df[df["Machine"].isin(["WBO001", "WBO002", "WBO003"])]
 
 # =========================================
-# SIDEBAR
+# SIDEBAR CONTROL
 # =========================================
-st.sidebar.title("SCADA Control")
+st.sidebar.title("🛠 SCADA Control")
 
 machine_id = st.sidebar.selectbox("Machine", ["WBO001", "WBO002", "WBO003"])
 
 page = st.sidebar.radio(
     "Module",
-    ["📊 KPI Dashboard", "🧪 Simulation Engine", "📡 Power BI Feed"]
+    ["📊 KPI Dashboard", "🧪 Simulation Engine", "📡 Power BI Feed", "📅 PM Scheduler"]
 )
+
+# =========================================
+# 🔄 GLOBAL REFRESH BUTTON
+# =========================================
+if st.sidebar.button("🔄 REFRESH SYSTEM"):
+    st.rerun()
 
 machine_df = df[df["Machine"] == machine_id]
 
 # =========================================
-# KPI DASHBOARD (UNCHANGED LOGIC)
+# KPI DASHBOARD
 # =========================================
 if page == "📊 KPI Dashboard":
 
@@ -100,18 +115,28 @@ if page == "📊 KPI Dashboard":
     avg_wear = machine_df["Capillary_Wear"].mean()
     failure_rate = machine_df["Wirebond_Failure"].mean() * 100
 
-    hist_risk = min(avg_wear / 300, 1)
-
-    availability = 1 - (avg_wear / 300)
-    performance = avg_speed / 3000
-    quality = 1 - (failure_rate / 100)
+    # OEE logic
+    availability = max(0, 1 - (avg_wear / 300))
+    performance = min(1, avg_speed / 3000)
+    quality = max(0, 1 - (failure_rate / 100))
     oee = availability * performance * quality * 100
+
+    # Risk
+    risk = min(avg_wear / 300, 1)
+
+    def risk_color(r):
+        if r < 0.3:
+            return "🟢 GOOD"
+        elif r < 0.7:
+            return "🟠 WARNING"
+        else:
+            return "🔴 CRITICAL"
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Availability", f"{availability:.2f}")
     col2.metric("Performance", f"{performance:.2f}")
     col3.metric("Quality", f"{quality:.2f}")
-    col4.metric("OEE %", f"{oee:.2f}%")
+    col4.metric("OEE %", f"{oee:.2f}")
 
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Temp", f"{avg_temp:.2f}")
@@ -120,32 +145,44 @@ if page == "📊 KPI Dashboard":
     c4.metric("Wear", f"{avg_wear:.2f}")
     c5.metric("Failure %", f"{failure_rate:.2f}%")
 
-    st.subheader("Machine Health")
-    st.success("GOOD" if hist_risk < 0.3 else "WARNING" if hist_risk < 0.7 else "CRITICAL")
+    st.subheader("Machine Health Status")
+    st.markdown(f"### {risk_color(risk)}")
 
     rul = max(1, (300 - avg_wear) / 20)
     st.metric("RUL (Days)", f"{rul:.1f}")
 
-    st.metric("Anomaly", f"{machine_df['Capillary_Wear'].std():.2f}")
+    st.metric("Anomaly Index", f"{machine_df['Capillary_Wear'].std():.2f}")
 
-    st.plotly_chart(go.Figure(go.Indicator(
+    fig = go.Figure(go.Indicator(
         mode="gauge+number",
-        value=hist_risk * 100,
-        gauge={"axis": {"range": [0, 100]}}
-    )), use_container_width=True)
+        value=risk * 100,
+        gauge={
+            "axis": {"range": [0, 100]},
+            "bar": {"color": "red"},
+            "steps": [
+                {"range": [0, 30], "color": "green"},
+                {"range": [30, 70], "color": "orange"},
+                {"range": [70, 100], "color": "red"},
+            ]
+        }
+    ))
+
+    st.plotly_chart(fig, use_container_width=True)
 
 # =========================================
-# SIMULATION ENGINE
+# 🧪 SIMULATION ENGINE (LEFT SIDEBAR CONTROL)
 # =========================================
 if page == "🧪 Simulation Engine":
 
     st.title("🧪 Simulation Engine")
 
-    bond_temp = st.slider("Bond Temp", 290, 330, 310)
-    heater_temp = st.slider("Heater Temp", 300, 360, 320)
-    speed = st.slider("Speed", 1000, 3000, 1500)
-    force = st.slider("Force", 10, 100, 50)
-    wear = st.slider("Wear", 0, 300, 100)
+    st.sidebar.subheader("Simulation Controls")
+
+    bond_temp = st.sidebar.slider("Bond Temp", 290, 330, 310)
+    heater_temp = st.sidebar.slider("Heater Temp", 300, 360, 320)
+    speed = st.sidebar.slider("Speed", 1000, 3000, 1500)
+    force = st.sidebar.slider("Force", 10, 100, 50)
+    wear = st.sidebar.slider("Wear", 0, 300, 100)
 
     sim_df = pd.DataFrame([{
         "Bond_Head_Temperature": bond_temp,
@@ -158,6 +195,14 @@ if page == "🧪 Simulation Engine":
     X = sim_df.reindex(columns=features, fill_value=0)
     prob = model.predict_proba(X)[0][1]
 
+    def risk_color(prob):
+        if prob < 0.3:
+            return "🟢 LOW"
+        elif prob < 0.7:
+            return "🟠 MEDIUM"
+        else:
+            return "🔴 HIGH"
+
     st.subheader("Risk Gauge")
 
     fig = go.Figure(go.Indicator(
@@ -165,22 +210,41 @@ if page == "🧪 Simulation Engine":
         value=prob * 100,
         gauge={
             "axis": {"range": [0, 100]},
-            "bar": {"color": "red" if prob > 0.7 else "orange" if prob > 0.3 else "green"}
+            "bar": {"color": "red"},
+            "steps": [
+                {"range": [0, 30], "color": "green"},
+                {"range": [30, 70], "color": "orange"},
+                {"range": [70, 100], "color": "red"},
+            ]
         }
     ))
 
     st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader("Recommendation")
+    st.subheader("Risk Level")
+    st.markdown(f"### {risk_color(prob)}")
 
-    st.info("High Risk" if prob > 0.7 else "Medium Risk" if prob > 0.3 else "Low Risk")
+    st.subheader("Prescriptive Recommendation")
+
+    if prob > 0.7:
+        st.error("🔴 Immediate Maintenance Required")
+        st.write("Action: Stop machine + replace capillary + inspect bonding head")
+    elif prob > 0.3:
+        st.warning("🟠 Schedule Maintenance Soon")
+        st.write("Action: Inspect wear trend + reduce speed")
+    else:
+        st.success("🟢 Continue Operation")
+        st.write("Action: Normal operation")
 
 # =========================================
-# POWER BI FEED
+# 📡 POWER BI FEED (FIXED)
 # =========================================
 if page == "📡 Power BI Feed":
 
     st.title("📡 Power BI Feed")
+
+    if st.button("🔄 Refresh Power BI Feed"):
+        st.rerun()
 
     power_df = df.copy()
 
@@ -206,4 +270,34 @@ if page == "📡 Power BI Feed":
 
     power_df.to_csv(POWERBI_PATH, index=False)
 
-    st.success("Export completed")
+    st.success("📁 Power BI Export Completed")
+
+# =========================================
+# 📅 PM SCHEDULER (NEW BUT NON-DESTRUCTIVE ADDITION)
+# =========================================
+if page == "📅 PM Scheduler":
+
+    st.title("📅 Preventive Maintenance Scheduler")
+
+    avg_wear = machine_df["Capillary_Wear"].mean()
+
+    if avg_wear < 100:
+        next_pm = "In 14 Days"
+        action = "Normal Monitoring"
+    elif avg_wear < 200:
+        next_pm = "In 7 Days"
+        action = "Inspect Capillary"
+    else:
+        next_pm = "IMMEDIATE"
+        action = "Replace Capillary + Bond Head Inspection"
+
+    st.metric("Next PM Window", next_pm)
+
+    st.warning(f"Recommended Action: {action}")
+
+    st.write("Rule-based PM system (no AI):")
+    st.code("""
+    IF wear < 100 → PM in 14 days
+    IF wear 100–200 → PM in 7 days
+    IF wear > 200 → Immediate maintenance
+    """)
