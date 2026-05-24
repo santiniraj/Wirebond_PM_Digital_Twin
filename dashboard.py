@@ -85,10 +85,21 @@ if not FEATURE_PATH.exists():
     st.error("❌ features.json not found")
     st.stop()
 
+from paths import MODEL_PATH, FEATURE_PATH, CLEANED_DATA_PATH
+import pandas as pd
+import joblib
+import json
+
 # =========================
 # LOAD MODEL
 # =========================
 model = joblib.load(MODEL_PATH)
+
+# =========================
+# LOAD FEATURES
+# =========================
+with open(FEATURE_PATH, "r") as f:
+    features = json.load(f)
 
 # =========================
 # LOAD DATA
@@ -96,10 +107,11 @@ model = joblib.load(MODEL_PATH)
 df = pd.read_csv(CLEANED_DATA_PATH)
 
 # =========================
-# LOAD FEATURES
+# FIX: Ensure Machine column exists
 # =========================
-with open(FEATURE_PATH, "r") as f:
-    features = json.load(f)
+if "Machine" not in df.columns:
+    df["Machine"] = df.get("Type", "WBO001")
+
 # =========================================
 # SIDEBAR
 # =========================================
@@ -378,10 +390,11 @@ if page == "📡 Power BI Feed":
     ) * 100
 
     power_df["Timestamp"] = pd.date_range(
-        end=datetime.now(),
+        start=pd.Timestamp.now() - pd.Timedelta(hours=len(power_df)),
         periods=len(power_df),
-        freq="h"
+        freq="h"   # lowercase FIX
     )
+
     # ================= KPI =================
     st.subheader("📊 Fleet KPI Overview")
 
