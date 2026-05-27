@@ -1,6 +1,5 @@
 # =========================================
 # 🏭 WIRE BOND SCADA DIGITAL TWIN
-# FULL STABLE VERSION
 # =========================================
 
 import streamlit as st
@@ -21,40 +20,25 @@ st.set_page_config(page_title="SCADA Digital Twin", layout="wide")
 
 st.markdown("""
 <style>
-.digital {
-    font-size:22px;
-    font-weight:bold;
-    color:#2b6cb0;
-}
+.digital {font-size:22px;font-weight:bold;color:#2b6cb0;}
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown(
-    '<div class="digital">🧠 SCADA DIGITAL TWIN ACTIVE</div>',
-    unsafe_allow_html=True
-)
+st.markdown('<div class="digital">🧠 SCADA DIGITAL TWIN ACTIVE</div>', unsafe_allow_html=True)
 
 # =========================================
 # LOAD DATA
 # =========================================
 model = joblib.load(MODEL_PATH)
-
 df = pd.read_csv(DATA_PATH)
 
 with open(FEATURE_PATH) as f:
     features = json.load(f)
 
-# =========================================
-# MACHINE GENERATOR
-# =========================================
 if "Machine" not in df.columns:
-    df["Machine"] = np.random.choice(
-        ["WBO001", "WBO002", "WBO003"],
-        len(df)
-    )
+    df["Machine"] = np.random.choice(["WBO001","WBO002","WBO003"], len(df))
 
-df = df[df["Machine"].isin(["WBO001", "WBO002", "WBO003"])]
-
+df = df[df["Machine"].isin(["WBO001","WBO002","WBO003"])]
 df_all = df.copy()
 
 # =========================================
@@ -64,23 +48,11 @@ HIL_FILE = "hil_log.csv"
 
 try:
     hil_log = pd.read_csv(HIL_FILE)
-
 except:
-    hil_log = pd.DataFrame(columns=[
-        "Time",
-        "Machine",
-        "Risk",
-        "System_Action",
-        "Operator_Decision"
-    ])
+    hil_log = pd.DataFrame(columns=["Time","Machine","Risk","System_Action","Operator_Decision"])
 
-# =========================================
-# HIL FUNCTION
-# =========================================
 def log_hil(machine, risk, system_action, operator):
-
     global hil_log
-
     new = pd.DataFrame([{
         "Time": datetime.now(),
         "Machine": machine,
@@ -88,28 +60,18 @@ def log_hil(machine, risk, system_action, operator):
         "System_Action": system_action,
         "Operator_Decision": operator
     }])
-
     hil_log = pd.concat([hil_log, new], ignore_index=True)
-
     hil_log.to_csv(HIL_FILE, index=False)
 
 # =========================================
 # SIDEBAR
 # =========================================
 st.sidebar.title("Control Panel")
-
-machine_id = st.sidebar.selectbox(
-    "Machine",
-    ["WBO001", "WBO002", "WBO003"]
-)
+machine_id = st.sidebar.selectbox("Machine", ["WBO001","WBO002","WBO003"])
 
 page = st.sidebar.radio(
     "Module",
-    [
-        "📊 Performance Dashboard",
-        "🧪 Simulation Engine",
-        "📡 Analytics Feed"
-    ]
+    ["📊 Performance Dashboard", "🧪 Simulation Engine", "📡 Analytics Feed"]
 )
 
 if st.sidebar.button("🔄 Refresh"):
@@ -121,69 +83,36 @@ machine_df = df[df["Machine"] == machine_id]
 # COLOR ENGINE
 # =========================================
 def risk_color(v):
-
     if v < 0.3:
-        return "#2E8B57"   # DARK GREEN
-
+        return "#2E8B57"
     elif v < 0.7:
-        return "#FF8C00"   # DARK ORANGE
-
-    else:
-        return "#DC143C"   # DARK RED
+        return "#FF8C00"
+    return "#DC143C"
 
 # =========================================
 # AI ENGINE
 # =========================================
 def ai_diagnosis(wear, temp, speed):
-
     if wear > 200:
-        return (
-            "Capillary degradation detected",
-            "Immediate inspection required"
-        )
-
+        return "Capillary degradation detected", "Immediate inspection required"
     elif temp > 320:
-        return (
-            "Thermal instability detected",
-            "Reduce heater load"
-        )
-
+        return "Thermal instability detected", "Reduce heater load"
     elif speed < 1200:
-        return (
-            "Low production efficiency",
-            "Adjust bonding speed"
-        )
-
+        return "Low production efficiency", "Adjust bonding speed"
     else:
-        return (
-            "System stable",
-            "Continue operation"
-        )
+        return "System stable", "Continue operation"
 
 # =========================================
 # PM SCHEDULER
 # =========================================
 def pm_schedule(wear):
-
     today = datetime.today()
-
     if wear < 100:
-        return (
-            "Routine Maintenance",
-            today + timedelta(days=14)
-        )
-
+        return "Routine Maintenance", today + timedelta(days=14)
     elif wear < 200:
-        return (
-            "Preventive Maintenance",
-            today + timedelta(days=7)
-        )
-
+        return "Preventive Maintenance", today + timedelta(days=7)
     else:
-        return (
-            "Urgent Maintenance",
-            today + timedelta(days=1)
-        )
+        return "Urgent Maintenance", today + timedelta(days=1)
 
 # =========================================
 # 📊 PERFORMANCE DASHBOARD
@@ -193,126 +122,47 @@ if page == "📊 Performance Dashboard":
     st.title("📊 Machine Performance Dashboard")
 
     wear = machine_df["Capillary_Wear"].mean()
-
     speed = machine_df["Bonding_Speed"].mean()
-
     temp = machine_df["Bond_Head_Temperature"].mean()
-
     fail = machine_df["Wirebond_Failure"].mean()
 
-    # =====================================
-    # OEE
-    # =====================================
-    availability = 1 - wear / 300
-
-    performance = speed / 3000
-
+    availability = 1 - wear/300
+    performance = speed/3000
     quality = 1 - fail
+    oee = availability * performance * quality * 100
+    risk = wear/300
 
-    oee = (
-        availability *
-        performance *
-        quality * 100
-    )
-
-    risk = wear / 300
-
-    # =====================================
-    # KPI CARDS
-    # =====================================
     col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Availability", f"{availability:.2f}")
+    col2.metric("Performance", f"{performance:.2f}")
+    col3.metric("Quality", f"{quality:.2f}")
+    col4.metric("OEE %", f"{oee:.2f}")
 
-    col1.metric(
-        "Availability",
-        f"{availability:.2f}"
-    )
-
-    col2.metric(
-        "Performance",
-        f"{performance:.2f}"
-    )
-
-    col3.metric(
-        "Quality",
-        f"{quality:.2f}"
-    )
-
-    col4.metric(
-        "OEE %",
-        f"{oee:.2f}"
-    )
-
-    # =====================================
-    # RISK GAUGE
-    # =====================================
     st.subheader("Risk Gauge")
 
-    st.plotly_chart(
-        go.Figure(
-            go.Indicator(
-                mode="gauge+number",
+    st.plotly_chart(go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=risk*100,
+        gauge={
+            "axis":{"range":[0,100]},
+            "bar":{"color":risk_color(risk)},
+            "steps":[
+                {"range":[0,30],"color":"#2E8B57"},
+                {"range":[30,70],"color":"#FF8C00"},
+                {"range":[70,100],"color":"#DC143C"}
+            ]
+        }
+    )))
 
-                value=risk * 100,
-
-                gauge={
-                    "axis": {
-                        "range": [0, 100]
-                    },
-
-                    "bar": {
-                        "color": risk_color(risk)
-                    },
-
-                    "steps": [
-                        {
-                            "range": [0, 30],
-                            "color": "#2E8B57"
-                        },
-
-                        {
-                            "range": [30, 70],
-                            "color": "#FF8C00"
-                        },
-
-                        {
-                            "range": [70, 100],
-                            "color": "#DC143C"
-                        }
-                    ]
-                }
-            )
-        ),
-
-        use_container_width=True
-    )
-
-    # =====================================
-    # AI RECOMMENDATION
-    # =====================================
-    issue, action = ai_diagnosis(
-        wear,
-        temp,
-        speed
-    )
-
+    issue, action = ai_diagnosis(wear,temp,speed)
     pm_type, pm_date = pm_schedule(wear)
 
     st.info(issue)
-
     st.warning(action)
+    st.success(f"{pm_type} | {pm_date.strftime('%Y-%m-%d')}")
 
-    st.success(
-        f"{pm_type} | {pm_date.strftime('%Y-%m-%d')}"
-    )
-
-    # =====================================
-    # HIL HISTORY
-    # =====================================
     st.subheader("Operator Decision History")
-
-    st.dataframe(
-        hil_log[hil_log["Machine"] == machine_id]
-    )
+    st.dataframe(hil_log[hil_log["Machine"] == machine_id])
 
 # =========================================
 # 🧪 SIMULATION ENGINE
@@ -321,40 +171,11 @@ if page == "🧪 Simulation Engine":
 
     st.title("🧪 Simulation Engine")
 
-    # =====================================
-    # SIDEBAR INPUTS
-    # =====================================
-    temp = st.sidebar.slider(
-        "Temperature",
-        290,
-        330,
-        310
-    )
+    temp = st.sidebar.slider("Temperature",290,330,310)
+    speed = st.sidebar.slider("Speed",1000,3000,1500)
+    force = st.sidebar.slider("Force",10,100,50)
+    wear = st.sidebar.slider("Wear",0,300,100)
 
-    speed = st.sidebar.slider(
-        "Speed",
-        1000,
-        3000,
-        1500
-    )
-
-    force = st.sidebar.slider(
-        "Force",
-        10,
-        100,
-        50
-    )
-
-    wear = st.sidebar.slider(
-        "Wear",
-        0,
-        300,
-        100
-    )
-
-    # =====================================
-    # SIMULATION DATA
-    # =====================================
     sim = pd.DataFrame([{
         "Bond_Head_Temperature": temp,
         "Bonding_Speed": speed,
@@ -362,114 +183,42 @@ if page == "🧪 Simulation Engine":
         "Capillary_Wear": wear
     }])
 
-    X = sim.reindex(
-        columns=features,
-        fill_value=0
-    )
-
+    X = sim.reindex(columns=features, fill_value=0)
     prob = model.predict_proba(X)[0][1]
-
     risk = prob
 
-    # =====================================
-    # AI ANALYSIS
-    # =====================================
-    issue, action = ai_diagnosis(
-        wear,
-        temp,
-        speed
-    )
-
+    issue, action = ai_diagnosis(wear,temp,speed)
     pm_type, pm_date = pm_schedule(wear)
 
-    # =====================================
-    # SIMULATION RISK GAUGE
-    # =====================================
     st.subheader("Simulation Risk Gauge")
 
-    st.plotly_chart(
-        go.Figure(
-            go.Indicator(
-                mode="gauge+number",
+    st.plotly_chart(go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=risk*100,
+        gauge={
+            "axis":{"range":[0,100]},
+            "bar":{"color":risk_color(risk)},
+            "steps":[
+                {"range":[0,30],"color":"#2E8B57"},
+                {"range":[30,70],"color":"#FF8C00"},
+                {"range":[70,100],"color":"#DC143C"}
+            ]
+        }
+    )))
 
-                value=risk * 100,
-
-                gauge={
-                    "axis": {
-                        "range": [0, 100]
-                    },
-
-                    "bar": {
-                        "color": risk_color(risk)
-                    },
-
-                    "steps": [
-                        {
-                            "range": [0, 30],
-                            "color": "#2E8B57"
-                        },
-
-                        {
-                            "range": [30, 70],
-                            "color": "#FF8C00"
-                        },
-
-                        {
-                            "range": [70, 100],
-                            "color": "#DC143C"
-                        }
-                    ]
-                }
-            )
-        ),
-
-        use_container_width=True
-    )
-
-    # =====================================
-    # AI RESULT
-    # =====================================
     st.info(issue)
-
     st.warning(action)
+    st.success(f"{pm_type} | {pm_date.strftime('%Y-%m-%d')}")
 
-    st.success(
-        f"{pm_type} | {pm_date.strftime('%Y-%m-%d')}"
-    )
-
-    # =====================================
-    # HIL SYSTEM
-    # =====================================
-    system_action = (
-        "Approve Maintenance"
-        if risk > 0.5
-        else "Continue Operation"
-    )
-
-    operator = st.radio(
-        "Operator Decision",
-        ["Approve", "Reject", "Override"]
-    )
+    system_action = "Approve Maintenance" if risk > 0.5 else "Continue Operation"
+    operator = st.radio("Operator Decision",["Approve","Reject","Override"])
 
     if st.button("Confirm HIL Decision"):
-
-        log_hil(
-            machine_id,
-            risk,
-            system_action,
-            operator
-        )
-
+        log_hil(machine_id, risk, system_action, operator)
         st.success("Decision Logged")
 
-    # =====================================
-    # HIL HISTORY
-    # =====================================
     st.subheader("Operator Decision History")
-
-    st.dataframe(
-        hil_log[hil_log["Machine"] == machine_id]
-    )
+    st.dataframe(hil_log[hil_log["Machine"] == machine_id])
 
 # =========================================
 # 📡 ANALYTICS FEED
@@ -478,185 +227,95 @@ if page == "📡 Analytics Feed":
 
     st.title("📡 Analytics Feed")
 
-    # =====================================
-    # KPI ENGINE
-    # =====================================
-    df_all["Availability"] = (
-        1 - df_all["Capillary_Wear"] / 300
-    )
+    df_all["Availability"] = 1 - df_all["Capillary_Wear"]/300
+    df_all["Performance"] = df_all["Bonding_Speed"]/3000
+    df_all["Quality"] = 1 - df_all["Wirebond_Failure"]
 
-    df_all["Performance"] = (
-        df_all["Bonding_Speed"] / 3000
-    )
+    df_all["Efficiency"] = df_all["Availability"] * df_all["Performance"] * df_all["Quality"] * 100
+    df_all["Risk"] = df_all["Capillary_Wear"]/300
 
-    df_all["Quality"] = (
-        1 - df_all["Wirebond_Failure"]
-    )
-
-    # =====================================
-    # OEE
-    # =====================================
-    df_all["Efficiency"] = (
-        df_all["Availability"] *
-        df_all["Performance"] *
-        df_all["Quality"] * 100
-    )
-
-    # =====================================
-    # RISK
-    # =====================================
-    df_all["Risk"] = (
-        df_all["Capillary_Wear"] / 300
-    )
-
-    # =====================================
-    # PRIORITY SCORE
-    # =====================================
-    df_all["Priority_Score"] = (
-        df_all["Risk"] *
-        (100 - df_all["Efficiency"])
-    )
-
-    # =====================================
-    # FAILURE COUNT
-    # =====================================
-    df_all["Failure_Count"] = (
-        df_all["TWF"] +
-        df_all["HDF"] +
-        df_all["PWF"] +
-        df_all["OSF"] +
-        df_all["RNF"]
-    )
-
-    # =====================================
-    # TIMESTAMP
-    # =====================================
     df_all["Timestamp"] = pd.date_range(
         end=pd.Timestamp.now(),
         periods=len(df_all),
         freq="h"
     )
 
-    # =====================================
-    # MAINTENANCE PRIORITY
-    # =====================================
-    priority = df_all.groupby(
-        "Machine"
-    )[["Risk", "Efficiency"]].mean()
-
-    priority["Priority Score"] = (
-        priority["Risk"] *
-        (100 - priority["Efficiency"])
-    )
-
-    priority = priority.sort_values(
-        "Priority Score",
-        ascending=False
-    )
+    priority = df_all.groupby("Machine")[["Risk","Efficiency"]].mean()
+    priority["Priority Score"] = priority["Risk"]*(100-priority["Efficiency"])
+    priority = priority.sort_values("Priority Score", ascending=False)
 
     st.subheader("Maintenance Priority")
-
     st.dataframe(priority)
 
-    # =====================================
-    # EFFICIENCY TREND
-    # =====================================
     st.subheader("Efficiency Trend")
+    st.plotly_chart(px.line(df_all, x="Timestamp", y="Efficiency", color="Machine"))
 
-    st.plotly_chart(
-        px.line(
-            df_all,
-            x="Timestamp",
-            y="Efficiency",
-            color="Machine"
-        ),
-
-        use_container_width=True
-    )
-
-    # =====================================
-    # RISK DISTRIBUTION
-    # =====================================
     st.subheader("Risk Distribution")
+    st.plotly_chart(px.histogram(df_all, x="Risk", color="Machine"))
 
-    st.plotly_chart(
-        px.histogram(
-            df_all,
-            x="Risk",
-            color="Machine",
-
-            color_discrete_sequence=[
-                "#2E8B57",
-                "#FF8C00",
-                "#DC143C"
-            ]
-        ),
-
-        use_container_width=True
-    )
-
-    # =====================================
-    # HEATMAP
-    # =====================================
     st.subheader("Heatmap")
+    heat = df_all.groupby("Machine")[["Risk","Efficiency"]].mean()
+    st.plotly_chart(px.imshow(heat, text_auto=True))
 
-    heat = df_all.groupby(
-        "Machine"
-    )[["Risk", "Efficiency"]].mean()
-
-    st.plotly_chart(
-        px.imshow(
-            heat,
-
-            text_auto=True,
-
-            color_continuous_scale=[
-                "#2E8B57",
-                "#FF8C00",
-                "#DC143C"
-            ]
-        ),
-
-        use_container_width=True
-    )
-
-    # =====================================
-    # OEE COMPONENTS
-    # =====================================
     st.subheader("Component Breakdown")
+    st.plotly_chart(px.bar(df_all, x="Machine", y=["Availability","Performance","Quality"], barmode="group"))
 
-    st.plotly_chart(
-        px.bar(
-            df_all,
+    # =========================================
+    # 📊 POWER BI KPI MAPPING (ADDED)
+    # =========================================
+    st.subheader("📊 Power BI KPI Mapping (Rubric Alignment)")
 
-            x="Machine",
+    kpi_map = pd.DataFrame({
+        "Rubric": ["A","B","C","D","E","F","G"],
+        "Power BI Focus": [
+            "Machine Overview KPIs",
+            "Risk + Failure Analysis",
+            "Predictive Risk KPIs",
+            "Sensor Data Tables",
+            "Chart Justification",
+            "Interactive Dashboard",
+            "Decision + Recommendation"
+        ],
+        "Marks": [5,5,5,5,5,10,5]
+    })
 
-            y=[
-                "Availability",
-                "Performance",
-                "Quality"
-            ],
+    st.dataframe(kpi_map)
 
-            barmode="group",
+    # =========================================
+    # 🧠 AUTO CONCLUSION (ADDED)
+    # =========================================
+    st.subheader("🧠 Auto-Generated Conclusion")
 
-            color_discrete_sequence=[
-                "#2E8B57",
-                "#FF8C00",
-                "#DC143C"
-            ]
-        ),
+    avg_risk = df_all["Risk"].mean()
+    avg_eff = df_all["Efficiency"].mean()
 
-        use_container_width=True
-    )
+    if avg_risk > 0.6:
+        risk_text = "High system risk detected across machines."
+    else:
+        risk_text = "System operating within acceptable risk range."
 
-    # =====================================
-    # POWER BI EXPORT
-    # =====================================
-    df_all.to_csv(
-        POWERBI_PATH,
-        index=False
-    )
+    if avg_eff < 50:
+        eff_text = "Efficiency is below optimal production level."
+    else:
+        eff_text = "Efficiency is within acceptable industrial standards."
 
-    st.success(
-        "Power BI Dataset Export Completed"
-    )
+    conclusion = f"""
+The SCADA Digital Twin system demonstrates predictive maintenance capability using sensor-driven analytics.
+
+Key Findings:
+- {risk_text}
+- {eff_text}
+
+Recommendation:
+Apply preventive maintenance scheduling and prioritize high-risk machines using Priority Score.
+
+Impact:
+Reduces downtime and supports Industry 4.0 transformation.
+"""
+
+    st.info(conclusion)
+
+    # EXPORT
+    df_all.to_csv(POWERBI_PATH, index=False)
+
+    st.success("Power BI Dataset Export Completed")
