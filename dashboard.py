@@ -28,13 +28,13 @@ st.sidebar.success(current_time.strftime("%Y-%m-%d %H:%M:%S"))
 
 st.markdown("""
 <div style="
-    font-size: 34px;
+    font-size: 40px;
     font-weight: 800;
     color: #2b6cb0;
     text-align: center;
     padding: 10px;
 ">
-🧠 SCADA DIGITAL TWIN ACTIVE
+🧠 SCADA DIGITAL TWIN IN WIRE BOND PROCESS
 </div>
 """, unsafe_allow_html=True)
 
@@ -54,7 +54,7 @@ df = df[df["Machine"].isin(["WBO001","WBO002","WBO003"])]
 df_all = df.copy()
 
 # =========================================
-# HIL LOG (UPDATED WITH COMMENT)
+# HIL LOG
 # =========================================
 HIL_FILE = "hil_log.csv"
 
@@ -66,15 +66,19 @@ except:
     ])
 
 def log_hil(machine, risk, system_action, operator, comment):
-    global hil_log
+    if comment is None or comment == "":
+        comment = "No comment provided"
+
     new = pd.DataFrame([{
-        "Time": datetime.now(),
+        "Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "Machine": machine,
         "Risk": risk,
         "System_Action": system_action,
         "Operator_Decision": operator,
         "Comment": comment
     }])
+
+    global hil_log
     hil_log = pd.concat([hil_log, new], ignore_index=True)
     hil_log.to_csv(HIL_FILE, index=False)
 
@@ -134,9 +138,6 @@ if page == "📊 Performance Dashboard":
     oee = availability * performance * quality * 100
     risk = wear/300
 
-    # =========================
-    # MACHINE HEALTH STATUS
-    # =========================
     health = (1 - risk) * 100
 
     if health >= 70:
@@ -147,9 +148,12 @@ if page == "📊 Performance Dashboard":
         color = "#F39C12"
     else:
         status = "🔴 Critical"
-        color = "#E74C3C"   # ⭐ FIXED (this was missing)
+        color = "#E74C3C"
 
-    st.markdown(f"### Machine Health: <span style='color:{color}'>{status}</span>", unsafe_allow_html=True)
+    st.markdown(
+        f"### Machine Health: <span style='color:{color}'>{status}</span>",
+        unsafe_allow_html=True
+    )
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Availability", f"{availability:.2f}")
@@ -162,7 +166,7 @@ if page == "📊 Performance Dashboard":
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=risk*100,
-        number={"font":{"size":45,"color":"black"},"suffix":"%"},
+        number={"font":{"size":45},"suffix":"%"},
         gauge={
             "axis":{"range":[0,100]},
             "bar":{"color":"yellow","thickness":0.3},
@@ -183,9 +187,6 @@ if page == "📊 Performance Dashboard":
     st.warning(action)
     st.success(f"{pm_type} | {pm_date.strftime('%Y-%m-%d')}")
 
-    # =========================
-    # HIL COMMENT (KPI)
-    # =========================
     st.subheader("💬 HIL Comment (KPI)")
     kpi_comment = st.text_area("Enter KPI Comment")
 
@@ -215,26 +216,12 @@ if page == "🧪 Simulation Engine":
     X = sim.reindex(columns=features, fill_value=0)
     risk = model.predict_proba(X)[0][1]
 
-    health = (1 - risk) * 100
-
-    if health >= 70:
-        status = "🟢 Normal"
-        color = "#2ECC71"
-    elif health >= 40:
-        status = "🟠 Warning"
-        color = "#F39C12"
-    else:
-        status = "🔴 Critical"
-        color = "#E74C3C"   # ⭐ FIXED (this was missing)
-
-    st.markdown(f"### Machine Health: <span style='color:{color}'>{status}</span>", unsafe_allow_html=True)
-
     st.subheader("Simulation Risk Gauge")
 
     fig2 = go.Figure(go.Indicator(
         mode="gauge+number",
         value=risk*100,
-        number={"font":{"size":45,"color":"black"},"suffix":"%"},
+        number={"font":{"size":45},"suffix":"%"},
         gauge={
             "axis":{"range":[0,100]},
             "bar":{"color":"yellow","thickness":0.3},
@@ -286,6 +273,65 @@ if page == "📡 Analytics Feed":
 
     st.subheader("Analytics Ready for Power BI")
     st.dataframe(df_all)
+
+    # =====================================================
+    # 📊 ADDED ANALYTICS CHARTS (COMMENTED - NO STRUCTURE CHANGE)
+    # =====================================================
+
+    # 📊 KPI Overview Chart
+    st.subheader("📊 KPI Overview (Added Visualization)")
+    kpi_avg = df_all[["Availability","Performance","Quality","Efficiency","Risk"]].mean().reset_index()
+    kpi_avg.columns = ["KPI","Value"]
+
+    fig_kpi = px.bar(
+        kpi_avg,
+        x="KPI",
+        y="Value",
+        color="KPI",
+        color_discrete_sequence=["#2ECC71","#3498DB","#9B59B6","#F39C12","#E74C3C"]
+    )
+
+    st.plotly_chart(fig_kpi, use_container_width=True)
+
+    # 📈 Risk Trend
+    st.subheader("📈 Risk Trend (Added)")
+    fig_risk = px.line(df_all, x="Timestamp", y="Risk", color="Machine")
+    st.plotly_chart(fig_risk, use_container_width=True)
+
+    # 📈 Efficiency Trend
+    st.subheader("📈 Efficiency Trend (Added)")
+    fig_eff = px.line(df_all, x="Timestamp", y="Efficiency", color="Machine")
+    st.plotly_chart(fig_eff, use_container_width=True)
+
+    # ⚠️ Failure Distribution
+    st.subheader("⚠️ Failure Analysis (Added)")
+    fail_cols = ["TWF","HDF","PWF","OSF","RNF"]
+    fail_data = df_all[fail_cols].sum().reset_index()
+    fail_data.columns = ["Failure","Count"]
+
+    fig_fail = px.bar(
+        fail_data,
+        x="Failure",
+        y="Count",
+        color="Failure",
+        color_discrete_sequence=["#E74C3C","#F39C12","#9B59B6","#3498DB","#2ECC71"]
+    )
+
+    st.plotly_chart(fig_fail, use_container_width=True)
+
+    # 🔥 Correlation Heatmap
+    st.subheader("🔥 Correlation Matrix (Added)")
+    corr = df_all[[
+        "Bond_Head_Temperature",
+        "Bonding_Speed",
+        "Bonding_Force",
+        "Capillary_Wear",
+        "Risk",
+        "Efficiency"
+    ]].corr()
+
+    fig_corr = px.imshow(corr, text_auto=True, color_continuous_scale="RdBu")
+    st.plotly_chart(fig_corr, use_container_width=True)
 
     df_all.to_csv(POWERBI_PATH, index=False)
     st.success("Export Completed")
