@@ -28,7 +28,7 @@ st.sidebar.success(current_time.strftime("%Y-%m-%d %H:%M:%S"))
 
 st.markdown("""
 <div style="
-    font-size: 40px;
+    font-size: 34px;
     font-weight: 800;
     color: #2b6cb0;
     text-align: center;
