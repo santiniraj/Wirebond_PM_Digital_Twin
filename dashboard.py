@@ -18,6 +18,11 @@ from paths import MODEL_PATH, FEATURE_PATH, DATA_PATH, POWERBI_PATH
 # =========================================
 st.set_page_config(page_title="SCADA Digital Twin", layout="wide")
 
+# ⏱ REAL SYSTEM TIMESTAMP (ADDED)
+current_time = datetime.now()
+st.sidebar.markdown("### ⏱ Live System Time")
+st.sidebar.success(current_time.strftime("%Y-%m-%d %H:%M:%S"))
+
 st.markdown("""
 <style>
 .digital {font-size:22px;font-weight:bold;color:#2b6cb0;}
@@ -42,23 +47,26 @@ df = df[df["Machine"].isin(["WBO001","WBO002","WBO003"])]
 df_all = df.copy()
 
 # =========================================
-# HIL LOG
+# HIL LOG + COMMENT SYSTEM (ADDED)
 # =========================================
 HIL_FILE = "hil_log.csv"
 
 try:
     hil_log = pd.read_csv(HIL_FILE)
 except:
-    hil_log = pd.DataFrame(columns=["Time","Machine","Risk","System_Action","Operator_Decision"])
+    hil_log = pd.DataFrame(columns=[
+        "Time","Machine","Risk","System_Action","Operator_Decision","Comment"
+    ])
 
-def log_hil(machine, risk, system_action, operator):
+def log_hil(machine, risk, system_action, operator, comment):
     global hil_log
     new = pd.DataFrame([{
         "Time": datetime.now(),
         "Machine": machine,
         "Risk": risk,
         "System_Action": system_action,
-        "Operator_Decision": operator
+        "Operator_Decision": operator,
+        "Comment": comment
     }])
     hil_log = pd.concat([hil_log, new], ignore_index=True)
     hil_log.to_csv(HIL_FILE, index=False)
@@ -84,10 +92,10 @@ machine_df = df[df["Machine"] == machine_id]
 # =========================================
 def risk_color(v):
     if v < 0.3:
-        return "#2E8B57"
+        return "#2ECC71"
     elif v < 0.7:
-        return "#FF8C00"
-    return "#DC143C"
+        return "#F39C12"
+    return "#E74C3C"
 
 # =========================================
 # AI ENGINE
@@ -132,6 +140,21 @@ if page == "📊 Performance Dashboard":
     oee = availability * performance * quality * 100
     risk = wear/300
 
+    # 🏥 MACHINE HEALTH STATUS (ADDED BEFORE GAUGE)
+    health_score = (1 - risk) * 100
+
+    if health_score >= 70:
+        health_status = "🟢 Normal"
+        health_color = "#2ECC71"
+    elif health_score >= 40:
+        health_status = "🟠 Warning"
+        health_color = "#F39C12"
+    else:
+        health_status = "🔴 Critical"
+        health_color = "#E74C3C"
+
+    st.markdown(f"### 🏥 Machine Health: <span style='color:{health_color}'>{health_status}</span>", unsafe_allow_html=True)
+
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Availability", f"{availability:.2f}")
     col2.metric("Performance", f"{performance:.2f}")
@@ -140,19 +163,22 @@ if page == "📊 Performance Dashboard":
 
     st.subheader("Risk Gauge")
 
-    st.plotly_chart(go.Figure(go.Indicator(
+    fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=risk*100,
+        number={"font":{"size":45}, "suffix":"%"},
         gauge={
             "axis":{"range":[0,100]},
             "bar":{"color":risk_color(risk)},
             "steps":[
-                {"range":[0,30],"color":"#2E8B57"},
-                {"range":[30,70],"color":"#FF8C00"},
-                {"range":[70,100],"color":"#DC143C"}
+                {"range":[0,30],"color":"#2ECC71"},
+                {"range":[30,70],"color":"#F39C12"},
+                {"range":[70,100],"color":"#E74C3C"}
             ]
         }
-    )))
+    ))
+
+    st.plotly_chart(fig, use_container_width=True)
 
     issue, action = ai_diagnosis(wear,temp,speed)
     pm_type, pm_date = pm_schedule(wear)
@@ -161,7 +187,15 @@ if page == "📊 Performance Dashboard":
     st.warning(action)
     st.success(f"{pm_type} | {pm_date.strftime('%Y-%m-%d')}")
 
-    st.subheader("Operator Decision History")
+    # 💬 HIL COMMENT SYSTEM (ADDED)
+    st.subheader("💬 HIL Operator Comment")
+
+    comment_kpi = st.text_area("Enter Operator Comment (KPI Dashboard)")
+
+    if st.button("Submit KPI Comment"):
+        log_hil(machine_id, risk, "KPI Review", "N/A", comment_kpi)
+        st.success("Comment Logged")
+
     st.dataframe(hil_log[hil_log["Machine"] == machine_id])
 
 # =========================================
@@ -187,24 +221,42 @@ if page == "🧪 Simulation Engine":
     prob = model.predict_proba(X)[0][1]
     risk = prob
 
+    # 🏥 MACHINE HEALTH (ADDED)
+    health_score = (1 - risk) * 100
+
+    if health_score >= 70:
+        health_status = "🟢 Normal"
+        health_color = "#2ECC71"
+    elif health_score >= 40:
+        health_status = "🟠 Warning"
+        health_color = "#F39C12"
+    else:
+        health_status = "🔴 Critical"
+        health_color = "#E74C3C"
+
+    st.markdown(f"### 🏥 Machine Health: <span style='color:{health_color}'>{health_status}</span>", unsafe_allow_html=True)
+
     issue, action = ai_diagnosis(wear,temp,speed)
     pm_type, pm_date = pm_schedule(wear)
 
     st.subheader("Simulation Risk Gauge")
 
-    st.plotly_chart(go.Figure(go.Indicator(
+    fig2 = go.Figure(go.Indicator(
         mode="gauge+number",
         value=risk*100,
+        number={"font":{"size":45}, "suffix":"%"},
         gauge={
             "axis":{"range":[0,100]},
             "bar":{"color":risk_color(risk)},
             "steps":[
-                {"range":[0,30],"color":"#2E8B57"},
-                {"range":[30,70],"color":"#FF8C00"},
-                {"range":[70,100],"color":"#DC143C"}
+                {"range":[0,30],"color":"#2ECC71"},
+                {"range":[30,70],"color":"#F39C12"},
+                {"range":[70,100],"color":"#E74C3C"}
             ]
         }
-    )))
+    ))
+
+    st.plotly_chart(fig2, use_container_width=True)
 
     st.info(issue)
     st.warning(action)
@@ -213,8 +265,11 @@ if page == "🧪 Simulation Engine":
     system_action = "Approve Maintenance" if risk > 0.5 else "Continue Operation"
     operator = st.radio("Operator Decision",["Approve","Reject","Override"])
 
+    # 💬 HIL COMMENT (SIMULATION ADDED)
+    sim_comment = st.text_area("Enter Operator Comment (Simulation)")
+
     if st.button("Confirm HIL Decision"):
-        log_hil(machine_id, risk, system_action, operator)
+        log_hil(machine_id, risk, system_action, operator, sim_comment)
         st.success("Decision Logged")
 
     st.subheader("Operator Decision History")
@@ -260,62 +315,5 @@ if page == "📡 Analytics Feed":
     st.subheader("Component Breakdown")
     st.plotly_chart(px.bar(df_all, x="Machine", y=["Availability","Performance","Quality"], barmode="group"))
 
-    # =========================================
-    # 📊 POWER BI KPI MAPPING (ADDED)
-    # =========================================
-    st.subheader("📊 Power BI KPI Mapping (Rubric Alignment)")
-
-    kpi_map = pd.DataFrame({
-        "Rubric": ["A","B","C","D","E","F","G"],
-        "Power BI Focus": [
-            "Machine Overview KPIs",
-            "Risk + Failure Analysis",
-            "Predictive Risk KPIs",
-            "Sensor Data Tables",
-            "Chart Justification",
-            "Interactive Dashboard",
-            "Decision + Recommendation"
-        ],
-        "Marks": [5,5,5,5,5,10,5]
-    })
-
-    st.dataframe(kpi_map)
-
-    # =========================================
-    # 🧠 AUTO CONCLUSION (ADDED)
-    # =========================================
-    st.subheader("🧠 Auto-Generated Conclusion")
-
-    avg_risk = df_all["Risk"].mean()
-    avg_eff = df_all["Efficiency"].mean()
-
-    if avg_risk > 0.6:
-        risk_text = "High system risk detected across machines."
-    else:
-        risk_text = "System operating within acceptable risk range."
-
-    if avg_eff < 50:
-        eff_text = "Efficiency is below optimal production level."
-    else:
-        eff_text = "Efficiency is within acceptable industrial standards."
-
-    conclusion = f"""
-The SCADA Digital Twin system demonstrates predictive maintenance capability using sensor-driven analytics.
-
-Key Findings:
-- {risk_text}
-- {eff_text}
-
-Recommendation:
-Apply preventive maintenance scheduling and prioritize high-risk machines using Priority Score.
-
-Impact:
-Reduces downtime and supports Industry 4.0 transformation.
-"""
-
-    st.info(conclusion)
-
-    # EXPORT
     df_all.to_csv(POWERBI_PATH, index=False)
-
     st.success("Power BI Dataset Export Completed")
