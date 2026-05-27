@@ -221,7 +221,7 @@ if page == "🧪 Simulation Engine":
         log_hil(machine_id, risk, system_action, operator)
         st.success("Decision Logged")
 
-    vst.subheader("Operator Decision History")
+    st.subheader("Operator Decision History")
     st.dataframe(hil_log[hil_log["Machine"] == machine_id])
 
 # =========================================
