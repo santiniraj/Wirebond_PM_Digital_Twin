@@ -26,7 +26,17 @@ current_time = datetime.now(local_tz)
 st.sidebar.markdown("### ⏱ System Timestamp")
 st.sidebar.success(current_time.strftime("%Y-%m-%d %H:%M:%S"))
 
-st.markdown('<div class="digital">🧠 SCADA DIGITAL TWIN ACTIVE</div>', unsafe_allow_html=True)
+st.markdown("""
+<div style="
+    font-size: 34px;
+    font-weight: 800;
+    color: #2b6cb0;
+    text-align: center;
+    padding: 10px;
+">
+🧠 SCADA DIGITAL TWIN ACTIVE
+</div>
+""", unsafe_allow_html=True)
 
 # =========================================
 # LOAD DATA
