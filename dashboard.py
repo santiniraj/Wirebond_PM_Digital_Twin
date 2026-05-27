@@ -275,12 +275,21 @@ if page == "📡 Analytics Feed":
 
     st.title("📡 Analytics Feed")
 
+    # =========================
+    # ENGINEERING FEATURES
+    # =========================
     df_all["Availability"] = 1 - df_all["Capillary_Wear"]/300
     df_all["Performance"] = df_all["Bonding_Speed"]/3000
     df_all["Quality"] = 1 - df_all["Wirebond_Failure"]
 
     df_all["Efficiency"] = df_all["Availability"] * df_all["Performance"] * df_all["Quality"] * 100
     df_all["Risk"] = df_all["Capillary_Wear"]/300
+
+    # FIXED: proper priority scoring (more weight on risk + low efficiency)
+    df_all["Maintenance_Priority"] = (
+        (df_all["Risk"] * 0.7) +
+        ((100 - df_all["Efficiency"]) / 100 * 0.3)
+    )
 
     df_all["Timestamp"] = pd.date_range(
         end=pd.Timestamp.now(),
@@ -292,38 +301,102 @@ if page == "📡 Analytics Feed":
     st.dataframe(df_all)
 
     # =====================================================
-    # 📊 KPI BAR (kept simple - removed donut as requested)
+    # 🛠 PRIORITY TABLE
     # =====================================================
-    st.subheader("📊 KPI Overview (Bar Chart)")
+    st.subheader("🛠 Machine Priority Ranking")
 
-    kpi_avg = df_all[["Availability","Performance","Quality","Efficiency","Risk"]].mean().reset_index()
-    kpi_avg.columns = ["KPI","Value"]
+    priority_df = df_all.groupby("Machine").agg({
+        "Risk": "mean",
+        "Efficiency": "mean",
+        "Maintenance_Priority": "mean"
+    }).reset_index()
 
-    fig_kpi = px.bar(
-        kpi_avg,
-        x="KPI",
-        y="Value",
-        color="KPI",
-        color_discrete_sequence=["#2ECC71","#3498DB","#9B59B6","#F39C12","#E74C3C"]
+    priority_df = priority_df.sort_values("Maintenance_Priority", ascending=False)
+
+    def label(x):
+        if x > 0.7:
+            return "🔴 High"
+        elif x > 0.4:
+            return "🟠 Medium"
+        return "🟢 Low"
+
+    priority_df["Priority_Level"] = priority_df["Maintenance_Priority"].apply(label)
+
+    st.dataframe(priority_df)
+
+    # =====================================================
+    # 🌡 HEATMAP (RELATIONSHIP ANALYSIS)
+    # =====================================================
+    st.subheader("🌡 Correlation Heatmap (Process Relationship)")
+
+    corr = df_all[[
+        "Bond_Head_Temperature",
+        "Bonding_Speed",
+        "Bonding_Force",
+        "Capillary_Wear",
+        "Risk",
+        "Efficiency"
+    ]].corr()
+
+    fig_heatmap = px.imshow(
+        corr,
+        text_auto=True,
+        color_continuous_scale="Viridis"
     )
 
-    st.plotly_chart(fig_kpi, use_container_width=True)
+    st.plotly_chart(fig_heatmap, use_container_width=True)
 
     # =====================================================
-    # ⚠ FAILURE ANALYSIS (EXPLAINED)
+    # 📍 SCATTER PLOT (WEAR vs RISK)
     # =====================================================
-    st.subheader("⚠ Failure Analysis Meaning")
+    st.subheader("📍 Scatter Plot: Wear vs Risk")
 
-    st.markdown("""
-    Shows frequency of failure types:
-    - TWF = Tool Wear Failure  
-    - HDF = Head Damage Failure  
-    - PWF = Process Wear Failure  
-    - OSF = Operational Stress Failure  
-    - RNF = Random Noise Failure  
+    fig_scatter = px.scatter(
+        df_all,
+        x="Capillary_Wear",
+        y="Risk",
+        color="Machine",
+        size="Efficiency",
+        color_discrete_sequence=["#2ECC71", "#3498DB", "#9B59B6"]
+    )
 
-    👉 Used for identifying dominant failure root cause
-    """)
+    st.plotly_chart(fig_scatter, use_container_width=True)
+
+    # =====================================================
+    # 📈 TREND ANALYSIS (RISK + EFFICIENCY)
+    # =====================================================
+    st.subheader("📈 Trend Analysis Over Time")
+
+    fig_trend = go.Figure()
+
+    fig_trend.add_trace(go.Scatter(
+        x=df_all["Timestamp"],
+        y=df_all["Risk"],
+        mode="lines",
+        name="Risk Trend",
+        line=dict(color="#E74C3C")
+    ))
+
+    fig_trend.add_trace(go.Scatter(
+        x=df_all["Timestamp"],
+        y=df_all["Efficiency"],
+        mode="lines",
+        name="Efficiency Trend",
+        line=dict(color="#2ECC71")
+    ))
+
+    fig_trend.update_layout(
+        title="Risk vs Efficiency Over Time",
+        xaxis_title="Time",
+        yaxis_title="Value"
+    )
+
+    st.plotly_chart(fig_trend, use_container_width=True)
+
+    # =====================================================
+    # ⚠ FAILURE ANALYSIS
+    # =====================================================
+    st.subheader("⚠ Failure Analysis (Root Cause View)")
 
     fail_cols = ["TWF","HDF","PWF","OSF","RNF"]
     fail_data = df_all[fail_cols].sum().reset_index()
@@ -340,7 +413,7 @@ if page == "📡 Analytics Feed":
     st.plotly_chart(fig_fail, use_container_width=True)
 
     # =====================================================
-    # 📊 OEE CLUSTERED BAR (3 MACHINES)
+    # 📊 OEE CLUSTERED BAR
     # =====================================================
     st.subheader("📊 OEE Comparison Across Machines")
 
@@ -356,29 +429,6 @@ if page == "📡 Analytics Feed":
 
     st.plotly_chart(fig_oee, use_container_width=True)
 
-    # =====================================================
-    # 🛠 PRIORITY (ONLY 3 ROWS)
-    # =====================================================
-    st.subheader("🛠 Maintenance Priority (3 Machines Only)")
-
-    df_all["Maintenance_Priority"] = (
-        df_all["Risk"] * 0.6 +
-        (1 - df_all["Efficiency"]/100) * 0.4
-    )
-
-    priority_df = df_all.groupby("Machine")[["Risk","Efficiency","Maintenance_Priority"]].mean().reset_index()
-
-    def label(x):
-        if x > 0.7:
-            return "High"
-        elif x > 0.4:
-            return "Medium"
-        return "Low"
-
-    priority_df["Priority_Level"] = priority_df["Maintenance_Priority"].apply(label)
-
-    st.dataframe(priority_df)
-
-    # Export
+    # EXPORT FOR POWER BI
     df_all.to_csv(POWERBI_PATH, index=False)
     st.success("Export Completed")
