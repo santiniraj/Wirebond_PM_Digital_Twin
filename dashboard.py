@@ -137,7 +137,7 @@ if page == "📊 Performance Dashboard":
         color = "#F39C12"
     else:
         status = "🔴 Critical"
-	color = "#E74C3C"   # ⭐ FIXED (this was missing)
+        color = "#E74C3C"   # ⭐ FIXED (this was missing)
 
     st.markdown(f"### Machine Health: <span style='color:{color}'>{status}</span>", unsafe_allow_html=True)
 
@@ -215,7 +215,7 @@ if page == "🧪 Simulation Engine":
         color = "#F39C12"
     else:
         status = "🔴 Critical"
-	color = "#E74C3C"   # ⭐ FIXED (this was missing)
+        color = "#E74C3C"   # ⭐ FIXED (this was missing)
 
     st.markdown(f"### Machine Health: <span style='color:{color}'>{status}</span>", unsafe_allow_html=True)
 
