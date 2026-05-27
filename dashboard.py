@@ -221,59 +221,72 @@ if page == "🧪 Simulation Engine":
         log_hil(machine_id, risk, system_action, operator)
         st.success("Decision Logged")
 
-    st.subheader("Operator Decision History")
+    vst.subheader("Operator Decision History")
     st.dataframe(hil_log[hil_log["Machine"] == machine_id])
 
 # =========================================
 # 📡 ANALYTICS FEED (POWER BI - LIGHT COLORS ONLY)
 # =========================================
-if page == "📡 Analytics Feed":
+# =========================================
+# POWER BI KPI ENGINE
+# =========================================
 
-    st.title("📡 Analytics Feed (Power BI Style)")
+# OEE COMPONENTS
+df_all["Availability"] = 1 - df_all["Capillary_Wear"]/300
 
-    df_all["Availability"] = 1 - df_all["Capillary_Wear"]/300
-    df_all["Performance"] = df_all["Bonding_Speed"]/3000
-    df_all["Quality"] = 1 - df_all["Wirebond_Failure"]
+df_all["Performance"] = (
+    df_all["Bonding_Speed"] / 3000
+)
 
-    df_all["Efficiency"] = df_all["Availability"]*df_all["Performance"]*df_all["Quality"]*100
-    df_all["Risk"] = df_all["Capillary_Wear"]/300
+df_all["Quality"] = (
+    1 - df_all["Wirebond_Failure"]
+)
 
-    df_all["Timestamp"] = pd.date_range(
-        end=pd.Timestamp.now(),
-        periods=len(df_all),
-        freq="h"
-    )
+# =========================================
+# OEE / EFFICIENCY
+# =========================================
 
-    priority = df_all.groupby("Machine")[["Risk","Efficiency"]].mean()
-    priority["Priority Score"] = priority["Risk"]*(100-priority["Efficiency"])
-    priority = priority.sort_values("Priority Score", ascending=False)
+df_all["Efficiency"] = (
+    df_all["Availability"] *
+    df_all["Performance"] *
+    df_all["Quality"] * 100
+)
 
-    st.subheader("Maintenance Priority")
-    st.dataframe(priority)
+# =========================================
+# RISK ENGINE
+# =========================================
 
-    st.subheader("Efficiency Trend")
-    st.plotly_chart(px.line(df_all, x="Timestamp", y="Efficiency", color="Machine"))
+df_all["Risk"] = (
+    df_all["Capillary_Wear"] / 300
+)
 
-    st.subheader("Risk Distribution")
-    st.plotly_chart(px.histogram(df_all, x="Risk", color="Machine",
-        color_discrete_sequence=["#A8E6A3","#FFD08A","#F4A6A6"]))
+# =========================================
+# PRIORITY SCORE
+# =========================================
 
-    st.subheader("Heatmap")
-    heat = df_all.groupby("Machine")[["Risk","Efficiency"]].mean()
-    st.plotly_chart(px.imshow(
-        heat,
-        text_auto=True,
-        color_continuous_scale=["#A8E6A3","#FFD08A","#F4A6A6"]
-    ))
+df_all["Priority_Score"] = (
+    df_all["Risk"] *
+    (100 - df_all["Efficiency"])
+)
 
-    st.subheader("Component Breakdown")
-    st.plotly_chart(px.bar(
-        df_all,
-        x="Machine",
-        y=["Availability","Performance","Quality"],
-        barmode="group",
-        color_discrete_sequence=["#A8E6A3","#FFD08A","#F4A6A6"]
-    ))
+# =========================================
+# FAILURE COUNTER
+# =========================================
 
-    df_all.to_csv(POWERBI_PATH, index=False)
-    st.success("Export Completed")
+df_all["Failure_Count"] = (
+    df_all["TWF"] +
+    df_all["HDF"] +
+    df_all["PWF"] +
+    df_all["OSF"] +
+    df_all["RNF"]
+)
+
+# =========================================
+# TIMESTAMP FOR POWER BI
+# =========================================
+
+df_all["Timestamp"] = pd.date_range(
+    end=pd.Timestamp.now(),
+    periods=len(df_all),
+    freq="h"
+)
