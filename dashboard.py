@@ -216,6 +216,23 @@ if page == "🧪 Simulation Engine":
     X = sim.reindex(columns=features, fill_value=0)
     risk = model.predict_proba(X)[0][1]
 
+    health = (1 - risk) * 100   # ✅ ADDED
+
+    if health >= 70:
+        status = "🟢 Normal"
+        color = "#2ECC71"
+    elif health >= 40:
+        status = "🟠 Warning"
+        color = "#F39C12"
+    else:
+        status = "🔴 Critical"
+        color = "#E74C3C"
+
+    st.markdown(
+        f"### Machine Health: <span style='color:{color}'>{status}</span>",
+        unsafe_allow_html=True
+    )
+
     st.subheader("Simulation Risk Gauge")
 
     fig2 = go.Figure(go.Indicator(
@@ -252,15 +269,12 @@ if page == "🧪 Simulation Engine":
     st.dataframe(hil_log[hil_log["Machine"] == machine_id])
 
 # =========================================
-# 📡 ANALYTICS FEED (FULL UPGRADED)
+# 📡 ANALYTICS FEED
 # =========================================
 if page == "📡 Analytics Feed":
 
     st.title("📡 Analytics Feed")
 
-    # =========================
-    # KPI ENGINE
-    # =========================
     df_all["Availability"] = 1 - df_all["Capillary_Wear"]/300
     df_all["Performance"] = df_all["Bonding_Speed"]/3000
     df_all["Quality"] = 1 - df_all["Wirebond_Failure"]
@@ -268,26 +282,6 @@ if page == "📡 Analytics Feed":
     df_all["Efficiency"] = df_all["Availability"] * df_all["Performance"] * df_all["Quality"] * 100
     df_all["Risk"] = df_all["Capillary_Wear"]/300
 
-    # =========================
-    # 🛠 PRIORITY ENGINE (NEW)
-    # =========================
-    df_all["Maintenance_Priority"] = (
-        df_all["Risk"] * 0.6 +
-        (1 - df_all["Efficiency"]/100) * 0.4
-    )
-
-    def priority(x):
-        if x > 0.7:
-            return "High"
-        elif x > 0.4:
-            return "Medium"
-        return "Low"
-
-    df_all["Priority_Level"] = df_all["Maintenance_Priority"].apply(priority)
-
-    # =========================
-    # TIMESTAMP
-    # =========================
     df_all["Timestamp"] = pd.date_range(
         end=pd.Timestamp.now(),
         periods=len(df_all),
@@ -298,51 +292,37 @@ if page == "📡 Analytics Feed":
     st.dataframe(df_all)
 
     # =====================================================
-    # 📊 KPI DONUT (REPLACED IMPROVED VISUAL)
+    # 📊 KPI BAR (kept simple - removed donut as requested)
     # =====================================================
-    st.subheader("📊 KPI Contribution (Donut Chart)")
+    st.subheader("📊 KPI Overview (Bar Chart)")
 
-    kpi = df_all[["Availability","Performance","Quality"]].mean()
+    kpi_avg = df_all[["Availability","Performance","Quality","Efficiency","Risk"]].mean().reset_index()
+    kpi_avg.columns = ["KPI","Value"]
 
-    fig_donut = go.Figure(data=[go.Pie(
-        labels=["Availability","Performance","Quality"],
-        values=kpi,
-        hole=0.5,
-        marker=dict(colors=["#2ECC71","#3498DB","#9B59B6"])
-    )])
+    fig_kpi = px.bar(
+        kpi_avg,
+        x="KPI",
+        y="Value",
+        color="KPI",
+        color_discrete_sequence=["#2ECC71","#3498DB","#9B59B6","#F39C12","#E74C3C"]
+    )
 
-    st.plotly_chart(fig_donut, use_container_width=True)
-
-    # =====================================================
-    # 📊 OEE CLUSTERED BAR (3 MACHINES)
-    # =====================================================
-    st.subheader("📊 OEE Comparison Across Machines")
-
-    oee_df = df_all.groupby("Machine")[["Availability","Performance","Quality"]].mean().reset_index()
-
-    fig_oee = go.Figure()
-
-    fig_oee.add_trace(go.Bar(name="Availability", x=oee_df["Machine"], y=oee_df["Availability"]*100, marker_color="#2ECC71"))
-    fig_oee.add_trace(go.Bar(name="Performance", x=oee_df["Machine"], y=oee_df["Performance"]*100, marker_color="#3498DB"))
-    fig_oee.add_trace(go.Bar(name="Quality", x=oee_df["Machine"], y=oee_df["Quality"]*100, marker_color="#9B59B6"))
-
-    fig_oee.update_layout(barmode="group", title="OEE Components Across Machines")
-    st.plotly_chart(fig_oee, use_container_width=True)
+    st.plotly_chart(fig_kpi, use_container_width=True)
 
     # =====================================================
     # ⚠ FAILURE ANALYSIS (EXPLAINED)
     # =====================================================
+    st.subheader("⚠ Failure Analysis Meaning")
+
     st.markdown("""
-    ### ⚠ Failure Analysis Meaning
+    Shows frequency of failure types:
+    - TWF = Tool Wear Failure  
+    - HDF = Head Damage Failure  
+    - PWF = Process Wear Failure  
+    - OSF = Operational Stress Failure  
+    - RNF = Random Noise Failure  
 
-    This chart shows breakdown of failure modes:
-    - TWF → Tool Wear Failure  
-    - HDF → Head Damage Failure  
-    - PWF → Process Wear Failure  
-    - OSF → Operational Stress Failure  
-    - RNF → Random Noise Failure  
-
-    👉 Helps identify dominant failure source for maintenance planning
+    👉 Used for identifying dominant failure root cause
     """)
 
     fail_cols = ["TWF","HDF","PWF","OSF","RNF"]
@@ -360,34 +340,44 @@ if page == "📡 Analytics Feed":
     st.plotly_chart(fig_fail, use_container_width=True)
 
     # =====================================================
-    # 🔥 CORRELATION HEATMAP
+    # 📊 OEE CLUSTERED BAR (3 MACHINES)
     # =====================================================
-    st.subheader("🔥 Correlation Matrix")
+    st.subheader("📊 OEE Comparison Across Machines")
 
-    corr = df_all[[
-        "Bond_Head_Temperature",
-        "Bonding_Speed",
-        "Bonding_Force",
-        "Capillary_Wear",
-        "Risk",
-        "Efficiency"
-    ]].corr()
+    oee_df = df_all.groupby("Machine")[["Availability","Performance","Quality"]].mean().reset_index()
 
-    fig_corr = px.imshow(corr, text_auto=True, color_continuous_scale="RdBu")
-    st.plotly_chart(fig_corr, use_container_width=True)
+    fig_oee = go.Figure()
+
+    fig_oee.add_trace(go.Bar(name="Availability", x=oee_df["Machine"], y=oee_df["Availability"]*100, marker_color="#2ECC71"))
+    fig_oee.add_trace(go.Bar(name="Performance", x=oee_df["Machine"], y=oee_df["Performance"]*100, marker_color="#3498DB"))
+    fig_oee.add_trace(go.Bar(name="Quality", x=oee_df["Machine"], y=oee_df["Quality"]*100, marker_color="#9B59B6"))
+
+    fig_oee.update_layout(barmode="group", title="OEE Components Across Machines")
+
+    st.plotly_chart(fig_oee, use_container_width=True)
 
     # =====================================================
-    # 🛠 PRIORITY TABLE (NEW)
+    # 🛠 PRIORITY (ONLY 3 ROWS)
     # =====================================================
-    st.subheader("🛠 Maintenance Priority Table")
+    st.subheader("🛠 Maintenance Priority (3 Machines Only)")
 
-    st.dataframe(df_all[[
-        "Machine",
-        "Risk",
-        "Efficiency",
-        "Maintenance_Priority",
-        "Priority_Level"
-    ]])
+    df_all["Maintenance_Priority"] = (
+        df_all["Risk"] * 0.6 +
+        (1 - df_all["Efficiency"]/100) * 0.4
+    )
+
+    priority_df = df_all.groupby("Machine")[["Risk","Efficiency","Maintenance_Priority"]].mean().reset_index()
+
+    def label(x):
+        if x > 0.7:
+            return "High"
+        elif x > 0.4:
+            return "Medium"
+        return "Low"
+
+    priority_df["Priority_Level"] = priority_df["Maintenance_Priority"].apply(label)
+
+    st.dataframe(priority_df)
 
     # Export
     df_all.to_csv(POWERBI_PATH, index=False)
