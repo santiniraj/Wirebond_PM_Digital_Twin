@@ -402,12 +402,22 @@ if page == "📡 Analytics Feed":
     fail_data = df_all[fail_cols].sum().reset_index()
     fail_data.columns = ["Failure","Count"]
 
-    fig_fail = px.bar(
-        fail_data,
-        x="Failure",
-        y="Count",
-        color="Failure",
-        color_discrete_sequence=["#E74C3C","#F39C12","#9B59B6","#3498DB","#2ECC71"]
+    fig_fail = go.Figure(data=[go.Pie(
+        labels=fail_data["Failure"],
+        values=fail_data["Count"],
+        hole=0.5,   # ⭐ THIS MAKES IT A DONUT
+        marker=dict(colors=[
+            "#E74C3C",
+            "#F39C12",
+            "#9B59B6",
+            "#3498DB",
+            "#2ECC71"
+        ])
+    )])
+
+    fig_fail.update_layout(
+        title="Failure Distribution (Donut Chart)",
+        annotations=[dict(text="Failures", x=0.5, y=0.5, font_size=14, showarrow=False)]
     )
 
     st.plotly_chart(fig_fail, use_container_width=True)
