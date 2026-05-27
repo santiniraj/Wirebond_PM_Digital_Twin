@@ -11,6 +11,8 @@ import plotly.graph_objects as go
 import plotly.express as px
 
 from datetime import datetime, timedelta
+import pytz
+
 from paths import MODEL_PATH, FEATURE_PATH, DATA_PATH, POWERBI_PATH
 
 # =========================================
@@ -18,9 +20,13 @@ from paths import MODEL_PATH, FEATURE_PATH, DATA_PATH, POWERBI_PATH
 # =========================================
 st.set_page_config(page_title="SCADA Digital Twin", layout="wide")
 
-# ⏱ REAL SYSTEM TIMESTAMP (ADDED)
-current_time = datetime.now()
-st.sidebar.markdown("### ⏱ Live System Time")
+# =========================================
+# ⏱ FIXED REAL LOCAL TIME (MALAYSIA)
+# =========================================
+local_tz = pytz.timezone("Asia/Kuala_Lumpur")
+current_time = datetime.now(local_tz)
+
+st.sidebar.markdown("### ⏱ System Timestamp")
 st.sidebar.success(current_time.strftime("%Y-%m-%d %H:%M:%S"))
 
 st.markdown("""
@@ -47,26 +53,23 @@ df = df[df["Machine"].isin(["WBO001","WBO002","WBO003"])]
 df_all = df.copy()
 
 # =========================================
-# HIL LOG + COMMENT SYSTEM (ADDED)
+# HIL LOG
 # =========================================
 HIL_FILE = "hil_log.csv"
 
 try:
     hil_log = pd.read_csv(HIL_FILE)
 except:
-    hil_log = pd.DataFrame(columns=[
-        "Time","Machine","Risk","System_Action","Operator_Decision","Comment"
-    ])
+    hil_log = pd.DataFrame(columns=["Time","Machine","Risk","System_Action","Operator_Decision"])
 
-def log_hil(machine, risk, system_action, operator, comment):
+def log_hil(machine, risk, system_action, operator):
     global hil_log
     new = pd.DataFrame([{
         "Time": datetime.now(),
         "Machine": machine,
         "Risk": risk,
         "System_Action": system_action,
-        "Operator_Decision": operator,
-        "Comment": comment
+        "Operator_Decision": operator
     }])
     hil_log = pd.concat([hil_log, new], ignore_index=True)
     hil_log.to_csv(HIL_FILE, index=False)
@@ -88,14 +91,14 @@ if st.sidebar.button("🔄 Refresh"):
 machine_df = df[df["Machine"] == machine_id]
 
 # =========================================
-# COLOR ENGINE
+# FIXED COLOR ENGINE (NO LIGHT BLUE ISSUE)
 # =========================================
 def risk_color(v):
     if v < 0.3:
-        return "#2ECC71"
+        return "#1B5E20"   # dark green
     elif v < 0.7:
-        return "#F39C12"
-    return "#E74C3C"
+        return "#E65100"   # dark orange
+    return "#B71C1C"       # dark red
 
 # =========================================
 # AI ENGINE
@@ -140,21 +143,6 @@ if page == "📊 Performance Dashboard":
     oee = availability * performance * quality * 100
     risk = wear/300
 
-    # 🏥 MACHINE HEALTH STATUS (ADDED BEFORE GAUGE)
-    health_score = (1 - risk) * 100
-
-    if health_score >= 70:
-        health_status = "🟢 Normal"
-        health_color = "#2ECC71"
-    elif health_score >= 40:
-        health_status = "🟠 Warning"
-        health_color = "#F39C12"
-    else:
-        health_status = "🔴 Critical"
-        health_color = "#E74C3C"
-
-    st.markdown(f"### 🏥 Machine Health: <span style='color:{health_color}'>{health_status}</span>", unsafe_allow_html=True)
-
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Availability", f"{availability:.2f}")
     col2.metric("Performance", f"{performance:.2f}")
@@ -171,9 +159,9 @@ if page == "📊 Performance Dashboard":
             "axis":{"range":[0,100]},
             "bar":{"color":risk_color(risk)},
             "steps":[
-                {"range":[0,30],"color":"#2ECC71"},
-                {"range":[30,70],"color":"#F39C12"},
-                {"range":[70,100],"color":"#E74C3C"}
+                {"range":[0,30],"color":"#A5D6A7"},  # light green
+                {"range":[30,70],"color":"#64B5F6"},  # blue
+                {"range":[70,100],"color":"#CE93D8"}  # purple
             ]
         }
     ))
@@ -187,15 +175,7 @@ if page == "📊 Performance Dashboard":
     st.warning(action)
     st.success(f"{pm_type} | {pm_date.strftime('%Y-%m-%d')}")
 
-    # 💬 HIL COMMENT SYSTEM (ADDED)
-    st.subheader("💬 HIL Operator Comment")
-
-    comment_kpi = st.text_area("Enter Operator Comment (KPI Dashboard)")
-
-    if st.button("Submit KPI Comment"):
-        log_hil(machine_id, risk, "KPI Review", "N/A", comment_kpi)
-        st.success("Comment Logged")
-
+    st.subheader("Operator Decision History")
     st.dataframe(hil_log[hil_log["Machine"] == machine_id])
 
 # =========================================
@@ -221,21 +201,6 @@ if page == "🧪 Simulation Engine":
     prob = model.predict_proba(X)[0][1]
     risk = prob
 
-    # 🏥 MACHINE HEALTH (ADDED)
-    health_score = (1 - risk) * 100
-
-    if health_score >= 70:
-        health_status = "🟢 Normal"
-        health_color = "#2ECC71"
-    elif health_score >= 40:
-        health_status = "🟠 Warning"
-        health_color = "#F39C12"
-    else:
-        health_status = "🔴 Critical"
-        health_color = "#E74C3C"
-
-    st.markdown(f"### 🏥 Machine Health: <span style='color:{health_color}'>{health_status}</span>", unsafe_allow_html=True)
-
     issue, action = ai_diagnosis(wear,temp,speed)
     pm_type, pm_date = pm_schedule(wear)
 
@@ -249,9 +214,9 @@ if page == "🧪 Simulation Engine":
             "axis":{"range":[0,100]},
             "bar":{"color":risk_color(risk)},
             "steps":[
-                {"range":[0,30],"color":"#2ECC71"},
-                {"range":[30,70],"color":"#F39C12"},
-                {"range":[70,100],"color":"#E74C3C"}
+                {"range":[0,30],"color":"#A5D6A7"},
+                {"range":[30,70],"color":"#64B5F6"},
+                {"range":[70,100],"color":"#CE93D8"}
             ]
         }
     ))
@@ -265,18 +230,15 @@ if page == "🧪 Simulation Engine":
     system_action = "Approve Maintenance" if risk > 0.5 else "Continue Operation"
     operator = st.radio("Operator Decision",["Approve","Reject","Override"])
 
-    # 💬 HIL COMMENT (SIMULATION ADDED)
-    sim_comment = st.text_area("Enter Operator Comment (Simulation)")
-
     if st.button("Confirm HIL Decision"):
-        log_hil(machine_id, risk, system_action, operator, sim_comment)
+        log_hil(machine_id, risk, system_action, operator)
         st.success("Decision Logged")
 
     st.subheader("Operator Decision History")
     st.dataframe(hil_log[hil_log["Machine"] == machine_id])
 
 # =========================================
-# 📡 ANALYTICS FEED
+# 📡 ANALYTICS FEED (POWER BI COLORS FIXED)
 # =========================================
 if page == "📡 Analytics Feed":
 
@@ -302,18 +264,40 @@ if page == "📡 Analytics Feed":
     st.subheader("Maintenance Priority")
     st.dataframe(priority)
 
+    # POWER BI COLORS FIXED
     st.subheader("Efficiency Trend")
-    st.plotly_chart(px.line(df_all, x="Timestamp", y="Efficiency", color="Machine"))
+    st.plotly_chart(px.line(
+        df_all,
+        x="Timestamp",
+        y="Efficiency",
+        color="Machine",
+        color_discrete_sequence=["#A5D6A7", "#64B5F6", "#CE93D8"]
+    ))
 
     st.subheader("Risk Distribution")
-    st.plotly_chart(px.histogram(df_all, x="Risk", color="Machine"))
+    st.plotly_chart(px.histogram(
+        df_all,
+        x="Risk",
+        color="Machine",
+        color_discrete_sequence=["#A5D6A7", "#64B5F6", "#CE93D8"]
+    ))
 
     st.subheader("Heatmap")
     heat = df_all.groupby("Machine")[["Risk","Efficiency"]].mean()
-    st.plotly_chart(px.imshow(heat, text_auto=True))
+    st.plotly_chart(px.imshow(
+        heat,
+        text_auto=True,
+        color_continuous_scale=["#A5D6A7", "#64B5F6", "#CE93D8"]
+    ))
 
     st.subheader("Component Breakdown")
-    st.plotly_chart(px.bar(df_all, x="Machine", y=["Availability","Performance","Quality"], barmode="group"))
+    st.plotly_chart(px.bar(
+        df_all,
+        x="Machine",
+        y=["Availability","Performance","Quality"],
+        barmode="group",
+        color_discrete_sequence=["#A5D6A7", "#64B5F6", "#CE93D8"]
+    ))
 
     df_all.to_csv(POWERBI_PATH, index=False)
     st.success("Power BI Dataset Export Completed")
